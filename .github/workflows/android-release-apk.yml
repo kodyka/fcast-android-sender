@@ -69,7 +69,7 @@ jobs:
           curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdline-tools.zip
           unzip -q /tmp/cmdline-tools.zip -d thirdparty/android-sdk-commandlinetools
           yes | thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --licenses
-          thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --install "platforms;android-35" "build-tools;35.0.0"
+          thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --install "platforms;android-34" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Download Android NDK
         run: |
