@@ -88,7 +88,24 @@ import { InfoBanner } from "components/info_banner.slint";
 export component MainWindow inherits Window {
     background: Theme.surface-primary;
 
+    // safe-area helpers — reused by VerticalLayout padding and panel overlays.
+    // sa-bottom falls back to 65px because Slint 1.16 reports 0 for Android
+    // gesture-navigation (which uses system-gesture insets, not nav-bar insets).
+    // 65px ≈ 227 physical px / 3.5 scale = the gesture strip on this device.
+    // On 3-button-nav devices, safe-area-insets.bottom is ≥ 48px so the
+    // threshold of 10px keeps the real value.
+    property <length> sa-top: root.safe-area-insets.top;
+    // Slint 1.16 reports saB=16px for gesture-nav (only the home-indicator strip).
+    // The full gesture zone is 227 physical px / 3.5 = ~65px, so we take the max.
+    property <length> sa-bottom: root.safe-area-insets.bottom > 65px ? root.safe-area-insets.bottom : 65px;
+
     VerticalLayout {
+        // Fill the full window so padding maps 1-to-1 to physical insets.
+        width: root.width;
+        height: root.height;
+        // Keep main content + control bar inside the OS safe area.
+        padding-top: root.sa-top;
+        padding-bottom: root.sa-bottom;
         Rectangle {
             vertical-stretch: 1;
             // Conditional elements: only the matching view is instantiated.
@@ -103,48 +120,47 @@ export component MainWindow inherits Window {
     }
 
     // ── Panel overlay layer ───────────────────────────────────────────────────
-    // Sibling to the VerticalLayout; declared AFTER so panels render on top of
-    // the page + control bar. Each panel root is a Rectangle that fills the
-    // window via `width/height: parent.*`, hiding what's behind.
-    if Bridge.active-panel == Panel.settings:   FullSettingsPage { }
-    if Bridge.active-panel == Panel.debug:      FullDebugPage { }
-    if Bridge.active-panel == Panel.codec-test: CodecTestPage { }
-    if Bridge.active-panel == Panel.backup-reset: BackupResetPage { }
-    if Bridge.active-panel == Panel.audio:          AudioPage { }
-    if Bridge.active-panel == Panel.camera:        CameraPage { }
-    if Bridge.active-panel == Panel.quick-actions: QuickActionsPage { }
-    if Bridge.active-panel == Panel.cast-history:        CastHistoryPage { }
-    if Bridge.active-panel == Panel.cast-history-detail: CastHistoryDetailPage { }
-    if Bridge.active-panel == Panel.recording:     RecordingPage { }
+    // Each panel is offset by sa-top so its header starts below the status bar
+    // and "Done" buttons are tappable. Height shrinks by both insets so scroll
+    // content ends above the gesture-nav strip.
+    if Bridge.active-panel == Panel.settings:   FullSettingsPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.debug:      FullDebugPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.codec-test: CodecTestPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.backup-reset: BackupResetPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.audio:          AudioPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.camera:        CameraPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.quick-actions: QuickActionsPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.cast-history:        CastHistoryPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.cast-history-detail: CastHistoryDetailPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.recording:     RecordingPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
 
     if Bridge.active-panel == Panel.pairing: PairingPage {
+        y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom;
         close => { Bridge.active-panel = Panel.none; }
     }
     if Bridge.active-panel == Panel.receiver-rename: ReceiverRenamePage {
+        y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom;
         current-name: Bridge.selected-receiver-name;
         save(new-name) => {
-            // UI-only: no persistence. Just close the panel.
             Bridge.active-panel = Panel.none;
         }
         cancel => { Bridge.active-panel = Panel.none; }
     }
-    if Bridge.active-panel == Panel.bitrate-presets:     BitratePresetsPage { }
-    if Bridge.active-panel == Panel.bitrate-preset-edit: BitratePresetEditPage { }
-    if Bridge.active-panel == Panel.macros:        MacrosPage { }
-    if Bridge.active-panel == Panel.macro-edit:    MacroEditPage { }
-    if Bridge.active-panel == Panel.debug-log:     DebugLogPage { }
-    if Bridge.active-panel == Panel.debug-video:   DebugVideoPage { }
-    if Bridge.active-panel == Panel.network:       NetworkPage { }
-    if Bridge.active-panel == Panel.mixer:         MixerPage { }
-    if Bridge.active-panel == Panel.media-backend: MediaBackendPage { }
+    if Bridge.active-panel == Panel.bitrate-presets:     BitratePresetsPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.bitrate-preset-edit: BitratePresetEditPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.macros:        MacrosPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.macro-edit:    MacroEditPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.debug-log:     DebugLogPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.debug-video:   DebugVideoPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.network:       NetworkPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.mixer:         MixerPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
+    if Bridge.active-panel == Panel.media-backend: MediaBackendPage { y: root.sa-top; height: root.height - root.sa-top - root.sa-bottom; }
 
     // ── Global banner overlay ─────────────────────────────────────────────────
-    // Reads Bridge.banner-{visible,message,severity} by default. Driven by
-    // `Application::flash_banner` in lib.rs. Declared last so it paints on
-    // top of pages and panels.
     InfoBanner {
         x: 0;
-        y: 0;
+        y: root.sa-top;
         width: parent.width;
     }
+
 }

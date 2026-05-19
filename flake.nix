@@ -47,7 +47,10 @@
           # NDK r25c matches CI and build.rs clang/14.0.7 path.
           ndkVersion = "25.2.9519653";
           androidComposition = pkgs.androidenv.composeAndroidPackages {
-            buildToolsVersions = [ "35.0.0" ];
+            # 34.0.0 matches AGP 8.7's auto-resolved build-tools for compileSdk 34
+            # (CI silently auto-installs it; the Nix SDK is read-only so we pin it here).
+            # 35.0.0 mirrors what ci/.github/actions/android-ci-setup installs.
+            buildToolsVersions = [ "34.0.0" "35.0.0" ];
             platformVersions = [ "34" "35" ];
             ndkVersions = [ ndkVersion ];
             includeNDK = true;
@@ -207,8 +210,13 @@
               export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="$CC_i686_linux_android"
 
               # ── Generate local.properties for Gradle ────────────────
-              if [ ! -f local.properties ] || ! grep -q "sdk.dir" local.properties 2>/dev/null; then
-                echo "sdk.dir=${androidHome}" > local.properties
+              # Always regenerate so Gradle picks up the current Nix SDK path
+              # after flake bumps (otherwise a stale sdk.dir hash silently
+              # routes Gradle back to a derivation that no longer has the
+              # expected build-tools/platforms).
+              EXPECTED_SDK_DIR="sdk.dir=${androidHome}"
+              if [ ! -f local.properties ] || ! grep -qxF "$EXPECTED_SDK_DIR" local.properties; then
+                echo "$EXPECTED_SDK_DIR" > local.properties
                 echo "ndk.dir=${androidNdkRoot}" >> local.properties
                 echo "✓ Generated local.properties"
               fi

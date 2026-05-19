@@ -48,12 +48,12 @@ echo "│  Building fcast-android-sender ($BUILD_TYPE)              │"
 echo "└──────────────────────────────────────────────────────┘"
 
 # ── Step 1: Build Rust native library with cargo-ndk ──────────────────
+# Delegate to the CI script so local and CI stay in lock-step. It pins
+# ANDROID_PLATFORM/ANDROID_JAR which build scripts (e.g. Slint's
+# i-slint-backend-android-activity) require to locate android.jar.
 echo ""
 echo "▸ Step 1/3: cargo ndk (Rust → libfcastsender.so)"
-cargo ndk \
-  -t arm64-v8a \
-  -o app/src/main/jniLibs \
-  build $CARGO_PROFILE
+bash "$PROJECT_ROOT/ci/build-rust-android-lib.sh" "$BUILD_TYPE"
 
 # ── Step 2: Build GStreamer JNI via ndk-build ─────────────────────────
 echo ""
@@ -66,11 +66,10 @@ echo "▸ Step 2/3: ndk-build (GStreamer → libgstreamer_android.so)"
   APP_ABI=arm64-v8a \
   -j"$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 4)"
 
-# Copy ndk-build output into jniLibs so Gradle finds it
-if [ -d "app/libs/arm64-v8a" ]; then
-  mkdir -p app/src/main/jniLibs/arm64-v8a
-  cp -f app/libs/arm64-v8a/*.so app/src/main/jniLibs/arm64-v8a/ 2>/dev/null || true
-fi
+# No copy needed: app/build.gradle declares jniLibs.srcDirs = ['libs', 'src/main/jniLibs'],
+# so Gradle merges ndk-build's app/libs/ and cargo-ndk's app/src/main/jniLibs/ directly.
+# Copying would duplicate libgstreamer_android.so etc. across both dirs and fail
+# :app:mergeDebugJniLibFolders with "Duplicate resources".
 
 # ── Step 3: Gradle APK build ─────────────────────────────────────────
 echo ""

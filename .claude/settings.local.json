@@ -4,7 +4,12 @@
       "mcp__plugin_claude-code-home-manager_filesystem__read_text_file",
       "Bash(cargo build *)",
       "Bash(gh run *)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(act --version)",
+      "Bash(docker info *)",
+      "Read(//Users/test/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/i-slint-backend-android-activity-1.16.1/**)",
+      "Read(//Users/test/.cargo/registry/**)",
+      "Bash(nix develop *)"
     ]
   }
 }

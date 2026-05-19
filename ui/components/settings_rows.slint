@@ -135,6 +135,8 @@ export component SettingsSliderRow inherits Rectangle {
 export component SettingsSection inherits VerticalLayout {
     in property <string> title: "";
     spacing: 1px;
+    vertical-stretch: 0;
+    alignment: start;
 
     if root.title != "": HorizontalLayout {
         padding-left: Theme.padding-screen;
