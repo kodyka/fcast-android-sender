@@ -50,18 +50,26 @@ jobs:
         with:
           rust-target: aarch64-linux-android
 
-      - name: Install host GStreamer dev packages
-        # `cargo test backend::gstpop` builds the whole `android-sender` crate
-        # for the host (x86_64-unknown-linux-gnu), which pulls in
-        # `gstreamer-sys` etc. via pkg-config. The Android CI setup only
-        # provides the Android cross-compile SDK, so add the system
-        # GStreamer headers here so the host build can link.
+      - name: Install host build dependencies for `cargo test`
+        # `cargo test backend::gstpop` compiles the whole `android-sender`
+        # crate for the host (x86_64-unknown-linux-gnu), which pulls in
+        # several `*-sys` crates that resolve their C dependencies via
+        # pkg-config. The Android CI setup only provides the cross-compile
+        # SDK, so install the host headers here. The set mirrors what
+        # `cargo tree --target x86_64-unknown-linux-gnu` shows for the
+        # host-only sys crates: gstreamer-sys (libgstreamer1.0-dev),
+        # gstreamer-plugins-{base,bad}-sys, yeslogic-fontconfig-sys
+        # (libfontconfig1-dev + freetype), libpulse-sys (libpulse-dev),
+        # and openssl-sys (libssl-dev).
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libgstreamer1.0-dev \
             libgstreamer-plugins-base1.0-dev \
             libgstreamer-plugins-bad1.0-dev \
+            libfontconfig1-dev \
+            libfreetype-dev \
+            libpulse-dev \
             libssl-dev
 
       - name: Start gst-pop daemon
