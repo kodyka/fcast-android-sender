@@ -15,7 +15,7 @@
 
 import { VerticalBox, ScrollView } from "std-widgets.slint";
 import { Utils, VideoResolutionPicker, FrameratePicker } from "../components/mcore/common.slint";
-import { Bridge, Panel, LifecycleMode } from "../bridge.slint";
+import { Bridge, Panel, LifecycleMode, MediaBackendKind } from "../bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, DestructiveButton, TextButton } from "../components/buttons.slint";
 import {
@@ -206,6 +206,13 @@ export component FullSettingsPage inherits Rectangle {
                         title: @tr("Video pipeline");
                         value: @tr("open-panel-action" => "Open");
                         clicked => { Bridge.active-panel = Panel.debug-video; }
+                    }
+                    SettingsValueRow {
+                        title: @tr("Media backend");
+                        value: Bridge.media-backend == MediaBackendKind.migration
+                            ? @tr("Migration (in-process)")
+                            : @tr("gst-pop ({})", Bridge.gstpop-url);
+                        clicked => { Bridge.active-panel = Panel.media-backend; }
                     }
                 }
 

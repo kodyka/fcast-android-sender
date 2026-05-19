@@ -1,0 +1,83 @@
+name: gst-pop Smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gstpop-smoke.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.rs"
+      - "flake.nix"
+      - "ci/**"
+      - "scripts/smoke-gstpop.sh"
+      - "src/**"
+      - "ui/**"
+      - "app/jni/**"
+  push:
+    paths:
+      - ".github/workflows/gstpop-smoke.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.rs"
+      - "flake.nix"
+      - "ci/**"
+      - "scripts/smoke-gstpop.sh"
+      - "src/**"
+      - "ui/**"
+      - "app/jni/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gstpop-smoke-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gstpop-smoke:
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_TERM_COLOR: always
+      ANDROID_PLATFORM: android-34
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Android CI toolchain
+        uses: ./.github/actions/android-ci-setup
+        with:
+          rust-target: aarch64-linux-android
+
+      - name: Start gst-pop daemon
+        run: |
+          docker run --rm -d \
+            -p 127.0.0.1:9000:9000 \
+            --name gst-pop-smoke \
+            ghcr.io/dabrain34/gstpop:latest
+
+      - name: Wait for gst-pop daemon
+        run: |
+          for _ in {1..30}; do
+            if curl -s --max-time 1 http://127.0.0.1:9000 >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 0.2
+          done
+          echo "gst-pop daemon did not become reachable on :9000" >&2
+          docker logs gst-pop-smoke || true
+          exit 1
+
+      - name: Run gst-pop backend tests
+        run: cargo test backend::gstpop -- --include-ignored
+
+      - name: Build GStreamer Android JNI glue
+        run: bash ci/build-gstreamer-android-glue.sh
+
+      - name: Build arm64 Rust Android library
+        run: bash ci/build-rust-android-lib.sh debug
+
+      - name: Stop gst-pop daemon
+        if: always()
+        run: docker rm -f gst-pop-smoke || true

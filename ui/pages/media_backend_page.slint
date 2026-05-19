@@ -1,0 +1,226 @@
+import { ScrollView, LineEdit, ComboBox } from "std-widgets.slint";
+import { Bridge, Panel, MediaBackendKind, MediaBackendState } from "../bridge.slint";
+import { Theme } from "../theme.slint";
+import { PrimaryButton, DestructiveButton, TextButton } from "../components/buttons.slint";
+import { SettingsSection } from "../components/settings_rows.slint";
+
+export component MediaBackendPage inherits Rectangle {
+    in-out property <bool> any-edits-pending: false;
+
+    width: 100%;
+    height: 100%;
+    background: Theme.surface-primary;
+
+    VerticalLayout {
+        Rectangle {
+            height: 56px;
+            background: Theme.surface-card;
+            HorizontalLayout {
+                padding: Theme.padding-screen;
+                Text {
+                    text: @tr("Media backend");
+                    color: Theme.text-primary;
+                    font-size: Theme.font-size-heading;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+                TextButton {
+                    label: @tr("close-panel-button" => "Done");
+                    clicked => { Bridge.active-panel = Panel.none; }
+                }
+            }
+        }
+
+        ScrollView {
+            mouse-drag-pan-enabled: true;
+            VerticalLayout {
+                spacing: Theme.spacing-default;
+                padding: Theme.padding-screen;
+
+                Rectangle {
+                    background: Bridge.media-backend-state == MediaBackendState.error
+                        ? Theme.error.darker(35%)
+                        : Theme.surface-card;
+                    border-radius: Theme.radius-card;
+                    min-height: 56px;
+                    HorizontalLayout {
+                        padding: Theme.padding-screen;
+                        spacing: 8px;
+                        Rectangle {
+                            width: 12px;
+                            height: 12px;
+                            border-radius: 6px;
+                            background:
+                                Bridge.media-backend-state == MediaBackendState.ready ? Theme.success :
+                                Bridge.media-backend-state == MediaBackendState.probing ? Theme.warning :
+                                Bridge.media-backend-state == MediaBackendState.error ? Theme.error-fg :
+                                Theme.text-disabled;
+                            y: (parent.height - self.height) / 2;
+                        }
+                        VerticalLayout {
+                            spacing: 2px;
+                            horizontal-stretch: 1;
+                            Text {
+                                text:
+                                    Bridge.media-backend-state == MediaBackendState.ready ? @tr("Ready") :
+                                    Bridge.media-backend-state == MediaBackendState.probing ? @tr("Probing…") :
+                                    Bridge.media-backend-state == MediaBackendState.error ? @tr("Error") :
+                                    @tr("Disconnected");
+                                color: Theme.text-primary;
+                                font-size: Theme.font-size-body;
+                            }
+                            if Bridge.media-backend-status-text != "": Text {
+                                text: Bridge.media-backend-status-text;
+                                color: Theme.text-secondary;
+                                font-size: Theme.font-size-label;
+                                wrap: word-wrap;
+                            }
+                            if Bridge.media-backend-error-text != "": Text {
+                                text: Bridge.media-backend-error-text;
+                                color: Theme.error-fg;
+                                font-size: Theme.font-size-label;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+                }
+
+                SettingsSection {
+                    title: @tr("BACKEND");
+                    Rectangle {
+                        background: Theme.surface-card;
+                        border-radius: Theme.radius-card;
+                        min-height: 64px;
+                        HorizontalLayout {
+                            padding: Theme.padding-screen;
+                            spacing: 12px;
+                            Text {
+                                text: @tr("Engine");
+                                color: Theme.text-primary;
+                                font-size: Theme.font-size-body;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                            }
+                            ComboBox {
+                                model: [@tr("Migration (in-process)"), @tr("gst-pop (WebSocket)")];
+                                current-index: Bridge.media-backend == MediaBackendKind.migration ? 0 : 1;
+                                selected(value) => {
+                                    Bridge.media-backend = value == @tr("Migration (in-process)")
+                                        ? MediaBackendKind.migration
+                                        : MediaBackendKind.gst-pop;
+                                    root.any-edits-pending = true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if Bridge.media-backend == MediaBackendKind.gst-pop: SettingsSection {
+                    title: @tr("GST-POP DAEMON");
+
+                    Rectangle {
+                        background: Theme.surface-card;
+                        border-radius: Theme.radius-card;
+                        min-height: 88px;
+                        VerticalLayout {
+                            padding-left: Theme.padding-screen;
+                            padding-right: Theme.padding-screen;
+                            padding-top: 12px;
+                            padding-bottom: 12px;
+                            spacing: 4px;
+                            Text {
+                                text: @tr("WebSocket URL");
+                                color: Theme.text-secondary;
+                                font-size: Theme.font-size-label;
+                            }
+                            LineEdit {
+                                placeholder-text: "ws://127.0.0.1:9000";
+                                text <=> Bridge.gstpop-url;
+                                edited(text) => { root.any-edits-pending = true; }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        background: Theme.surface-card;
+                        border-radius: Theme.radius-card;
+                        min-height: 88px;
+                        VerticalLayout {
+                            padding-left: Theme.padding-screen;
+                            padding-right: Theme.padding-screen;
+                            padding-top: 12px;
+                            padding-bottom: 12px;
+                            spacing: 4px;
+                            Text {
+                                text: @tr("API key (optional)");
+                                color: Theme.text-secondary;
+                                font-size: Theme.font-size-label;
+                            }
+                            LineEdit {
+                                placeholder-text: @tr("Leave empty if --api-key was not set on the daemon");
+                                input-type: password;
+                                text <=> Bridge.gstpop-api-key;
+                                edited(text) => { root.any-edits-pending = true; }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        background: Theme.surface-card;
+                        border-radius: Theme.radius-card;
+                        min-height: 88px;
+                        VerticalLayout {
+                            padding-left: Theme.padding-screen;
+                            padding-right: Theme.padding-screen;
+                            padding-top: 12px;
+                            padding-bottom: 12px;
+                            spacing: 4px;
+                            Text {
+                                text: @tr("Pipeline id (gst-pop assigns \"0\" first)");
+                                color: Theme.text-secondary;
+                                font-size: Theme.font-size-label;
+                            }
+                            LineEdit {
+                                placeholder-text: "0";
+                                text <=> Bridge.gstpop-pipeline-id;
+                                edited(text) => { root.any-edits-pending = true; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            height: 96px;
+            background: Theme.surface-card;
+            HorizontalLayout {
+                padding: Theme.padding-screen;
+                spacing: 8px;
+
+                DestructiveButton {
+                    label: @tr("Probe");
+                    clicked => { Bridge.probe-media-backend(); }
+                }
+
+                Rectangle { horizontal-stretch: 1; }
+
+                TextButton {
+                    label: root.any-edits-pending ? @tr("Save") : @tr("Saved");
+                    clicked => {
+                        Bridge.save-media-backend-settings();
+                        root.any-edits-pending = false;
+                    }
+                }
+
+                PrimaryButton {
+                    label: @tr("Apply");
+                    clicked => {
+                        Bridge.apply-media-backend();
+                        root.any-edits-pending = false;
+                    }
+                }
+            }
+        }
+    }
+}
