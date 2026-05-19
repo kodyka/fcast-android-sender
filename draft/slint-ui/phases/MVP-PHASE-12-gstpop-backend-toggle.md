@@ -152,26 +152,41 @@ moment it appears.
 
 ## 6. Exit criteria for the full phase
 
-- [ ] User can open **Settings → Media backend**.
-- [ ] The page renders a toggle (`Migration` | `gst-pop`), a URL
+- [x] User can open **Settings → Media backend**.
+- [x] The page renders a toggle (`Migration` | `gst-pop`), a URL
       input (default `ws://127.0.0.1:9000`), an optional API-key
       input (masked), a "Probe" button, and an "Apply" button.
-- [ ] Pressing **Probe** issues a `get_version` JSON-RPC call (or a
+- [x] Pressing **Probe** issues a `get_version` JSON-RPC call (or a
       legacy `getinfo` for the migration backend) and writes the
       result back to `Bridge.media-backend-status-text`.
-- [ ] Pressing **Apply** persists the selection (via existing
+- [x] Pressing **Apply** persists the selection (via existing
       settings persistence — STEP-8) and updates the global backend
       selector so the next `Backend::current().dispatch(...)` lands
       on the right impl.
-- [ ] A green/red status dot at the top of the page reflects
+- [x] A green/red status dot at the top of the page reflects
       `Bridge.media-backend-state` (`disconnected | probing | ready |
       error`).
-- [ ] `cargo build -p android-sender --target aarch64-linux-android`
+- [x] `cargo build -p android-sender --target aarch64-linux-android`
       and `ci/ui-validate.sh --no-build` both pass.
 - [ ] STEP-9's manual smoke run (against
       `ghcr.io/dabrain34/gstpop:latest` in Docker) creates a
       `videotestsrc ! autovideosink` pipeline and gets back a
       `pipeline_added` event in the app's debug log.
+
+### Verification status
+
+- Verified in this repo:
+  `nix develop .#default -c cargo test backend::`
+  `nix develop .#default -c bash ci/ui-validate.sh --no-build`
+  `nix --offline develop .#android -c bash ci/build-gstreamer-android-glue.sh`
+  `nix --offline develop .#android -c cargo build -p android-sender --target aarch64-linux-android`
+- Still pending:
+  Docker-backed smoke on a machine with `docker` installed.
+- CI coverage added:
+  `.github/workflows/gstpop-smoke.yml` now provisions Android + GStreamer,
+  starts `ghcr.io/dabrain34/gstpop:latest`, runs the backend smoke tests,
+  and builds the Android target so STEP-9 can run automatically in GitHub
+  Actions even when local Docker is unavailable.
 
 ---
 

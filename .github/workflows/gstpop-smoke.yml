@@ -1,0 +1,109 @@
+name: gst-pop Smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gstpop-smoke.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.rs"
+      - "flake.nix"
+      - "ci/**"
+      - "scripts/smoke-gstpop.sh"
+      - "src/**"
+      - "ui/**"
+      - "app/jni/**"
+  push:
+    paths:
+      - ".github/workflows/gstpop-smoke.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "build.rs"
+      - "flake.nix"
+      - "ci/**"
+      - "scripts/smoke-gstpop.sh"
+      - "src/**"
+      - "ui/**"
+      - "app/jni/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gstpop-smoke-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gstpop-smoke:
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_TERM_COLOR: always
+      ANDROID_PLATFORM: android-34
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Android CI toolchain
+        uses: ./.github/actions/android-ci-setup
+        with:
+          rust-target: aarch64-linux-android
+
+      - name: Install host build dependencies for `cargo test`
+        # `cargo test backend::gstpop` compiles the whole `android-sender`
+        # crate for the host (x86_64-unknown-linux-gnu), which pulls in
+        # several `*-sys` crates that resolve their C dependencies via
+        # pkg-config. The Android CI setup only provides the cross-compile
+        # SDK, so install the host headers here. The set mirrors what
+        # `cargo tree --target x86_64-unknown-linux-gnu` shows for the
+        # host-only sys crates: gstreamer-sys (libgstreamer1.0-dev),
+        # gstreamer-plugins-{base,bad}-sys, yeslogic-fontconfig-sys
+        # (libfontconfig1-dev + freetype), libpulse-sys (libpulse-dev),
+        # and openssl-sys (libssl-dev).
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev \
+            libgstreamer-plugins-bad1.0-dev \
+            libfontconfig1-dev \
+            libfreetype-dev \
+            libpulse-dev \
+            libssl-dev
+
+      - name: Start gst-pop daemon
+        run: |
+          docker run --rm -d \
+            -p 127.0.0.1:9000:9000 \
+            --name gst-pop-smoke \
+            ghcr.io/dabrain34/gstpop:latest
+
+      - name: Wait for gst-pop daemon
+        run: |
+          # gst-pop is a pure WebSocket server and refuses plain HTTP requests
+          # (rejects with "No Connection: upgrade header" without sending a
+          # parseable HTTP response). Use a raw TCP probe instead of curl.
+          for _ in {1..50}; do
+            if (exec 3<>/dev/tcp/127.0.0.1/9000) 2>/dev/null; then
+              exec 3<&- 3>&-
+              exit 0
+            fi
+            sleep 0.2
+          done
+          echo "gst-pop daemon did not become reachable on :9000" >&2
+          docker logs gst-pop-smoke || true
+          exit 1
+
+      - name: Run gst-pop backend tests
+        run: cargo test backend::gstpop -- --include-ignored
+
+      - name: Build GStreamer Android JNI glue
+        run: bash ci/build-gstreamer-android-glue.sh
+
+      - name: Build arm64 Rust Android library
+        run: bash ci/build-rust-android-lib.sh debug
+
+      - name: Stop gst-pop daemon
+        if: always()
+        run: docker rm -f gst-pop-smoke || true
