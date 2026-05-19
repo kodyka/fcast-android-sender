@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_claude-code-home-manager_filesystem__read_text_file",
+      "Bash(cargo build *)",
+      "Bash(gh run *)",
+      "Bash(git fetch *)"
+    ]
+  }
+}

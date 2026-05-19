@@ -525,10 +525,16 @@ mod tests {
         std::env::remove_var(GRAPH_COMMAND_BIND_ENV);
 
         let first = start_graph_runtime();
-        assert!(first.is_ok(), "first start_graph_runtime() failed: {first:?}");
+        assert!(
+            first.is_ok(),
+            "first start_graph_runtime() failed: {first:?}"
+        );
 
         let second = start_graph_runtime();
-        assert!(second.is_ok(), "second start_graph_runtime() failed: {second:?}");
+        assert!(
+            second.is_ok(),
+            "second start_graph_runtime() failed: {second:?}"
+        );
 
         shutdown_graph_runtime().unwrap();
     }

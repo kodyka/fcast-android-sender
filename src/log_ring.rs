@@ -1,13 +1,13 @@
-use std::sync::Mutex;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use tracing::{Subscriber, Event};
-use tracing_subscriber::Layer;
-use tracing_subscriber::layer::Context;
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::sync::Mutex;
+use tracing::{Event, Subscriber};
+use tracing_subscriber::layer::Context;
+use tracing_subscriber::Layer;
 
-use crate::{MainWindow, Bridge, LogEntry, LogLevel};
+use crate::{Bridge, LogEntry, LogLevel, MainWindow};
 
 const LOG_RING_CAP: usize = 1024;
 /// Minimum interval between pushes from the ring buffer to the Slint UI.
@@ -31,9 +31,9 @@ pub struct LogRing {
 impl LogRing {
     pub fn new(ui_handle: slint::Weak<MainWindow>) -> Self {
         let this = Self {
-            entries: Arc::new(Mutex::new(
-                std::collections::VecDeque::with_capacity(LOG_RING_CAP),
-            )),
+            entries: Arc::new(Mutex::new(std::collections::VecDeque::with_capacity(
+                LOG_RING_CAP,
+            ))),
             dirty: Arc::new(AtomicBool::new(false)),
             ui_handle,
         };
@@ -89,7 +89,9 @@ impl LogRing {
 impl<S: Subscriber> Layer<S> for LogRing {
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
         let metadata = event.metadata();
-        if metadata.target().starts_with("fcastsender::log_ring") { return; }
+        if metadata.target().starts_with("fcastsender::log_ring") {
+            return;
+        }
 
         let mut visitor = LogEventVisitor::default();
         event.record(&mut visitor);
@@ -98,11 +100,14 @@ impl<S: Subscriber> Layer<S> for LogRing {
             level: match *metadata.level() {
                 tracing::Level::TRACE => LogLevel::Trace,
                 tracing::Level::DEBUG => LogLevel::Debug,
-                tracing::Level::INFO  => LogLevel::Info,
-                tracing::Level::WARN  => LogLevel::Warning,
+                tracing::Level::INFO => LogLevel::Info,
+                tracing::Level::WARN => LogLevel::Warning,
                 tracing::Level::ERROR => LogLevel::Error,
             },
-            timestamp: chrono::Local::now().format("%H:%M:%S%.3f").to_string().into(),
+            timestamp: chrono::Local::now()
+                .format("%H:%M:%S%.3f")
+                .to_string()
+                .into(),
             target: metadata.target().into(),
             message: visitor.message.into(),
         };
@@ -122,13 +127,19 @@ impl<S: Subscriber> Layer<S> for LogRing {
 }
 
 #[derive(Default)]
-struct LogEventVisitor { message: String }
+struct LogEventVisitor {
+    message: String,
+}
 
 impl tracing::field::Visit for LogEventVisitor {
     fn record_str(&mut self, f: &tracing::field::Field, v: &str) {
-        if f.name() == "message" { self.message = v.to_owned(); }
+        if f.name() == "message" {
+            self.message = v.to_owned();
+        }
     }
     fn record_debug(&mut self, f: &tracing::field::Field, v: &dyn std::fmt::Debug) {
-        if f.name() == "message" { self.message = format!("{:?}", v); }
+        if f.name() == "message" {
+            self.message = format!("{:?}", v);
+        }
     }
 }
