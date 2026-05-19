@@ -1,0 +1,117 @@
+name: Android APK Release
+
+on:
+  push:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ui-validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run UI audit
+        run: ci/ui-validate.sh --no-build
+
+  build-android-arm64-debug:
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_TERM_COLOR: always
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # CI intentionally validates the arm64 Android path only.
+          # Cargo.toml still lists the other Android targets for local/release builds.
+          targets: aarch64-linux-android
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            automake \
+            autoconf \
+            libtool \
+            libprotobuf-dev \
+            protobuf-compiler \
+            unzip \
+            xz-utils \
+            wget \
+            curl \
+            ninja-build \
+            libclang-dev
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: Download Android SDK
+        run: |
+          mkdir -p thirdparty
+          curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdline-tools.zip
+          unzip -q /tmp/cmdline-tools.zip -d thirdparty/android-sdk-commandlinetools
+          yes | thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --licenses
+          thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --install "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Download Android NDK
+        run: |
+          mkdir -p thirdparty
+          curl -fsSL https://dl.google.com/android/repository/android-ndk-r25c-linux.zip -o /tmp/android-ndk-r25c-linux.zip
+          unzip -q /tmp/android-ndk-r25c-linux.zip -d thirdparty
+
+      - name: Download GStreamer Android SDK
+        run: |
+          mkdir -p thirdparty/gstreamer-1.0-android-universal-1.28.0
+          curl -fsSL --retry 5 https://gstreamer.freedesktop.org/pkg/android/1.28.0/gstreamer-1.0-android-universal-1.28.0.tar.xz -o /tmp/gstreamer-android.tar.xz
+          tar -xf /tmp/gstreamer-android.tar.xz -C thirdparty/gstreamer-1.0-android-universal-1.28.0
+
+      - name: Export Android toolchain paths
+        run: |
+          echo "ANDROID_HOME=$GITHUB_WORKSPACE/thirdparty/Android/Sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$GITHUB_WORKSPACE/thirdparty/Android/Sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$GITHUB_WORKSPACE/thirdparty/android-ndk-r25c" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$GITHUB_WORKSPACE/thirdparty/android-ndk-r25c" >> "$GITHUB_ENV"
+          echo "GSTREAMER_ROOT_ANDROID=$GITHUB_WORKSPACE/thirdparty/gstreamer-1.0-android-universal-1.28.0" >> "$GITHUB_ENV"
+
+      - name: Build GStreamer Android JNI glue
+        run: bash ci/build-gstreamer-android-glue.sh
+
+      - name: Build arm64 Rust Android library
+        run: bash ci/build-rust-android-lib.sh debug
+
+      - name: Build arm64 debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Prepare arm64 debug APK artifact
+        id: prepare_arm64_debug_apk
+        run: |
+          TAG_NAME="${{ github.event.release.tag_name || github.ref_name }}"
+          SAFE_TAG_NAME="${TAG_NAME//\//-}"
+          APK_IN="app/build/outputs/apk/debug/app-debug.apk"
+          APK_OUT="app/build/outputs/apk/debug/fcast-sender-${SAFE_TAG_NAME}-arm64-v8a-debug.apk"
+          cp "$APK_IN" "$APK_OUT"
+          echo "apk_path=$APK_OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload arm64 debug APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-arm64-debug
+          path: ${{ steps.prepare_arm64_debug_apk.outputs.apk_path }}
