@@ -59,8 +59,12 @@ jobs:
 
       - name: Wait for gst-pop daemon
         run: |
-          for _ in {1..30}; do
-            if curl -s --max-time 1 http://127.0.0.1:9000 >/dev/null 2>&1; then
+          # gst-pop is a pure WebSocket server and refuses plain HTTP requests
+          # (rejects with "No Connection: upgrade header" without sending a
+          # parseable HTTP response). Use a raw TCP probe instead of curl.
+          for _ in {1..50}; do
+            if (exec 3<>/dev/tcp/127.0.0.1/9000) 2>/dev/null; then
+              exec 3<&- 3>&-
               exit 0
             fi
             sleep 0.2

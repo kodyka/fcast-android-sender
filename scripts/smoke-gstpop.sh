@@ -16,8 +16,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for _ in {1..30}; do
-    if curl -s --max-time 1 http://127.0.0.1:9000 >/dev/null 2>&1; then
+# gst-pop is a WebSocket-only server and refuses plain HTTP probes, so use a
+# raw TCP connect instead of curl to detect readiness.
+for _ in {1..50}; do
+    if (exec 3<>/dev/tcp/127.0.0.1/9000) 2>/dev/null; then
+        exec 3<&- 3>&-
         break
     fi
     sleep 0.2
