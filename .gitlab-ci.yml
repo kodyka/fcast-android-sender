@@ -30,7 +30,7 @@ buildSenderAndroid:
     - export ANDROID_NDK_HOME="$THIRDPARTY_DEPS_PATH/android-ndk-r25c"
     - export GSTREAMER_ROOT_ANDROID="$THIRDPARTY_DEPS_PATH/gstreamer-1.0-android-universal-1.28.0"
     - bash ci/build-gstreamer-android-glue.sh
-    - cargo build --release --target aarch64-linux-android
+    - bash ci/build-rust-android-lib.sh release
     - ./gradlew assembleRelease -PversionName=$ANDROID_VERSION_NAME -PversionCode=$ANDROID_VERSION_CODE
     - mkdir -p "./$ANDROID_VERSION_CODE"
     - mv ./app/build/outputs/apk/release/app-release-unsigned.apk "./$ANDROID_VERSION_CODE/fcast-sender-release.apk"

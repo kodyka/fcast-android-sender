@@ -94,8 +94,8 @@ jobs:
       - name: Build GStreamer Android JNI glue
         run: bash ci/build-gstreamer-android-glue.sh
 
-      - name: Cargo check
-        run: cargo check --target aarch64-linux-android
+      - name: Build arm64 Rust Android library
+        run: bash ci/build-rust-android-lib.sh debug
 
       - name: Build arm64 debug APK
         run: ./gradlew --no-daemon assembleDebug
