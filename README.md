@@ -15,6 +15,79 @@ The Android build still expects the same toolchain components the monorepo used:
 - GStreamer Android SDK 1.28.0
 - Java 21
 
+## Flake-based local setup (recommended)
+
+This repo ships two Nix dev shells:
+
+- `nix develop` — lightweight shell for Rust/UI checks
+- `nix develop .#android` — full Android shell (SDK + NDK + cargo-ndk + adb)
+
+For USB device deploy/debug, always use the Android shell.
+
+### 1. Enter Android dev shell
+
+```console
+$ nix develop .#android -L
+```
+
+On first run, Nix may download large Android/JDK artifacts. This is expected.
+
+### 2. Prepare your phone
+
+1. Enable Developer options
+2. Enable USB debugging
+3. Connect via USB
+4. Accept the RSA fingerprint prompt on device
+
+Verify:
+
+```console
+$ adb devices
+```
+
+You should see one device with `device` status (not `unauthorized`).
+
+### 3. Build, install, launch
+
+```console
+$ ./scripts/build-deploy.sh
+```
+
+Release build:
+
+```console
+$ ./scripts/build-deploy.sh --release
+```
+
+Build only (no install):
+
+```console
+$ ./scripts/build-deploy.sh --no-install
+```
+
+### 4. Debug logs
+
+App-focused logs:
+
+```console
+$ adb logcat -s fcastsender RustStdoutStderr
+```
+
+Broader filter:
+
+```console
+$ adb logcat | grep -i fcast
+```
+
+### 5. If USB install fails
+
+- Ensure phone is unlocked and USB mode is file transfer/PTP (not charge-only)
+- Re-run:
+  - `adb kill-server`
+  - `adb start-server`
+  - `adb devices`
+- If needed, revoke USB debugging authorizations on device, reconnect, accept prompt again
+
 ### Required environment
 
 `build.rs` is a no-op on non-Android targets. On Android targets
