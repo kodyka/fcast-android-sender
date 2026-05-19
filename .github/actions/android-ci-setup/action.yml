@@ -66,7 +66,11 @@ runs:
         printf 'y\n%.0s' $(seq 1 200) \
           | thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager \
               --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --licenses
-        SDK_PACKAGES=(${{ inputs.android-platforms }} ${{ inputs.android-build-tools }})
+        # Build the package list inside a quoted string so the ';' in
+        # "platforms;android-34" etc. isn't parsed as a bash command separator
+        # when expanded into an array literal; then word-split on whitespace.
+        SDK_PACKAGES_SPEC="${{ inputs.android-platforms }} ${{ inputs.android-build-tools }}"
+        read -ra SDK_PACKAGES <<<"$SDK_PACKAGES_SPEC"
         thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager \
           --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" \
           --install "${SDK_PACKAGES[@]}"
