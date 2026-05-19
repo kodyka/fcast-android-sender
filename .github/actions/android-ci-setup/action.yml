@@ -65,7 +65,7 @@ runs:
         # Use a finite `printf` stream so the writer exits 0 on its own.
         printf 'y\n%.0s' $(seq 1 200) \
           | thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager \
-              --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --licenses
+              --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --licenses || true
         # Build the package list inside a quoted string so the ';' in
         # "platforms;android-34" etc. isn't parsed as a bash command separator
         # when expanded into an array literal; then word-split on whitespace.
