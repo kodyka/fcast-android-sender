@@ -1,0 +1,476 @@
+import { LineEdit, Switch, ScrollView } from "std-widgets.slint";
+import { Bridge, Panel, SrtSource, MixerState } from "../bridge.slint";
+import { Theme } from "../theme.slint";
+import { PrimaryButton, TextButton, DestructiveButton } from "../components/buttons.slint";
+import { SettingsSection, SettingsSliderRow } from "../components/settings_rows.slint";
+
+component SrtSourceRow inherits Rectangle {
+    in-out property <SrtSource> data;
+    in property <string> title;
+    in property <string> slot-label;
+    callback edited();
+
+    background: Theme.surface-card;
+    border-radius: Theme.radius-card;
+    min-height: 200px;
+
+    VerticalLayout {
+        padding-left: Theme.padding-screen;
+        padding-right: Theme.padding-screen;
+        padding-top: Theme.padding-screen;
+        padding-bottom: Theme.padding-screen;
+        spacing: Theme.spacing-default;
+
+        HorizontalLayout {
+            spacing: Theme.spacing-default;
+            Text {
+                text: root.title;
+                color: Theme.text-primary;
+                font-size: Theme.font-size-heading;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            Text {
+                text:
+                    root.data.state == MixerState.idle ? @tr("idle")
+                    : root.data.state == MixerState.starting ? @tr("starting")
+                    : root.data.state == MixerState.running ? @tr("running")
+                    : root.data.state == MixerState.stopping ? @tr("stopping")
+                    : @tr("error");
+                color:
+                    root.data.state == MixerState.running ? Theme.success
+                    : root.data.state == MixerState.error ? Theme.error-fg
+                    : Theme.text-secondary;
+                font-size: Theme.font-size-label;
+                vertical-alignment: center;
+            }
+            Switch {
+                checked <=> root.data.enabled;
+                toggled() => { root.edited(); }
+            }
+        }
+
+        Text {
+            text: @tr("URL");
+            color: Theme.text-secondary;
+            font-size: Theme.font-size-label;
+        }
+        LineEdit {
+            placeholder-text: @tr("srt://relay.example:9710?mode=caller");
+            text <=> root.data.uri;
+            edited(text) => { root.edited(); }
+        }
+
+        SettingsSliderRow {
+            title: @tr("Latency");
+            unit: @tr(" ms");
+            minimum: 0;
+            maximum: 8000;
+            show-fractional: false;
+            value: root.data.latency-ms;
+            changed(v) => {
+                root.data.latency-ms = v;
+                root.edited();
+            }
+        }
+
+        Text {
+            text: @tr("Stream ID (optional)");
+            color: Theme.text-secondary;
+            font-size: Theme.font-size-label;
+        }
+        LineEdit {
+            placeholder-text: @tr("publish:my-stream-key");
+            text <=> root.data.stream-id;
+            edited(text) => { root.edited(); }
+        }
+
+        if root.data.last-error != "": Text {
+            text: root.data.last-error;
+            color: Theme.error-fg;
+            font-size: Theme.font-size-label;
+            wrap: word-wrap;
+        }
+    }
+}
+
+component MixerSlotControls inherits Rectangle {
+    in-out property <SrtSource> data;
+    in property <string> title;
+
+    background: Theme.surface-card;
+    border-radius: Theme.radius-card;
+    min-height: 220px;
+
+    VerticalLayout {
+        padding-left: Theme.padding-screen;
+        padding-right: Theme.padding-screen;
+        padding-top: Theme.padding-screen;
+        padding-bottom: Theme.padding-screen;
+        spacing: Theme.spacing-default;
+
+        Text {
+            text: root.title;
+            color: Theme.text-primary;
+            font-size: Theme.font-size-heading;
+        }
+
+        SettingsSliderRow {
+            title: @tr("Alpha");
+            minimum: 0;
+            maximum: 1;
+            show-fractional: true;
+            value <=> root.data.mix-alpha;
+            changed(v) => {
+                Bridge.apply-mixer-slot-config(
+                    root.data.slot-id, v,
+                    root.data.mix-zorder, root.data.mix-volume);
+            }
+        }
+
+        SettingsSliderRow {
+            title: @tr("Z-order");
+            minimum: 0;
+            maximum: 9;
+            show-fractional: false;
+            // `SettingsSliderRow.value` is float while `mix-zorder` is int.
+            // Keep one-way bind + explicit write-back to stay type-correct.
+            value: root.data.mix-zorder;
+            changed(v) => {
+                root.data.mix-zorder = v;
+                Bridge.apply-mixer-slot-config(
+                    root.data.slot-id, root.data.mix-alpha,
+                    v, root.data.mix-volume);
+            }
+        }
+
+        SettingsSliderRow {
+            title: @tr("Volume");
+            minimum: 0;
+            maximum: 1;
+            show-fractional: true;
+            value <=> root.data.mix-volume;
+            changed(v) => {
+                Bridge.apply-mixer-slot-config(
+                    root.data.slot-id, root.data.mix-alpha,
+                    root.data.mix-zorder, v);
+            }
+        }
+    }
+}
+
+component MixerCanvasControls inherits Rectangle {
+    background: Theme.surface-card;
+    border-radius: Theme.radius-card;
+    min-height: 240px;
+
+    callback canvas-edited();
+
+    VerticalLayout {
+        padding-left: Theme.padding-screen;
+        padding-right: Theme.padding-screen;
+        padding-top: Theme.padding-screen;
+        padding-bottom: Theme.padding-screen;
+        spacing: Theme.spacing-default;
+
+        Text {
+            text: @tr("Canvas");
+            color: Theme.text-primary;
+            font-size: Theme.font-size-heading;
+        }
+
+        SettingsSliderRow {
+            title: @tr("Width");
+            unit: @tr(" px");
+            minimum: 320;
+            maximum: 3840;
+            show-fractional: false;
+            value: Bridge.mixer-canvas.width;
+            changed(v) => {
+                Bridge.mixer-canvas.width = v;
+                Bridge.apply-mixer-canvas(v, Bridge.mixer-canvas.height, Bridge.mixer-canvas.sample-rate);
+                root.canvas-edited();
+            }
+        }
+
+        SettingsSliderRow {
+            title: @tr("Height");
+            unit: @tr(" px");
+            minimum: 240;
+            maximum: 2160;
+            show-fractional: false;
+            value: Bridge.mixer-canvas.height;
+            changed(v) => {
+                Bridge.mixer-canvas.height = v;
+                Bridge.apply-mixer-canvas(Bridge.mixer-canvas.width, v, Bridge.mixer-canvas.sample-rate);
+                root.canvas-edited();
+            }
+        }
+
+        SettingsSliderRow {
+            title: @tr("Sample rate");
+            unit: @tr(" Hz");
+            minimum: 8000;
+            maximum: 48000;
+            show-fractional: false;
+            value: Bridge.mixer-canvas.sample-rate;
+            changed(v) => {
+                Bridge.mixer-canvas.sample-rate = v;
+                Bridge.apply-mixer-canvas(Bridge.mixer-canvas.width, Bridge.mixer-canvas.height, v);
+                root.canvas-edited();
+            }
+        }
+
+        if Bridge.mixer-canvas.last-error != "": Text {
+            text: Bridge.mixer-canvas.last-error;
+            color: Theme.error-fg;
+            font-size: Theme.font-size-label;
+            wrap: word-wrap;
+        }
+    }
+}
+
+component RtmpDestinationRow inherits Rectangle {
+    background: Theme.surface-card;
+    border-radius: Theme.radius-card;
+    min-height: 240px;
+
+    callback edited();
+
+    pure function full-uri() -> string {
+        if Bridge.rtmp-destination.stream-key == "" {
+            return Bridge.rtmp-destination.uri;
+        }
+        if Bridge.rtmp-destination.uri == "" {
+            return "";
+        }
+        return Bridge.rtmp-destination.uri + "/" + Bridge.rtmp-destination.stream-key;
+    }
+
+    VerticalLayout {
+        padding-left: Theme.padding-screen;
+        padding-right: Theme.padding-screen;
+        padding-top: Theme.padding-screen;
+        padding-bottom: Theme.padding-screen;
+        spacing: Theme.spacing-default;
+
+        HorizontalLayout {
+            spacing: Theme.spacing-default;
+            Text {
+                text: @tr("RTMP destination");
+                color: Theme.text-primary;
+                font-size: Theme.font-size-heading;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            Text {
+                text:
+                    Bridge.rtmp-destination.state == MixerState.running ? @tr("live")
+                    : Bridge.rtmp-destination.state == MixerState.starting ? @tr("starting")
+                    : Bridge.rtmp-destination.state == MixerState.stopping ? @tr("stopping")
+                    : Bridge.rtmp-destination.state == MixerState.error ? @tr("error")
+                    : @tr("idle");
+                color:
+                    Bridge.rtmp-destination.state == MixerState.running ? Theme.success
+                    : Bridge.rtmp-destination.state == MixerState.error ? Theme.error-fg
+                    : Theme.text-secondary;
+                font-size: Theme.font-size-label;
+                vertical-alignment: center;
+            }
+            Switch {
+                checked <=> Bridge.rtmp-destination.enabled;
+                toggled() => { root.edited(); }
+            }
+        }
+
+        Text {
+            text: @tr("URL");
+            color: Theme.text-secondary;
+            font-size: Theme.font-size-label;
+        }
+        LineEdit {
+            placeholder-text: @tr("rtmp://arn03.contribute.live-video.net/app");
+            text <=> Bridge.rtmp-destination.uri;
+            edited(text) => { root.edited(); }
+        }
+
+        Text {
+            text: @tr("Stream key");
+            color: Theme.text-secondary;
+            font-size: Theme.font-size-label;
+        }
+        LineEdit {
+            input-type: password;
+            placeholder-text: @tr("live_...");
+            text <=> Bridge.rtmp-destination.stream-key;
+            edited(text) => { root.edited(); }
+        }
+
+        Text {
+            text: @tr("Full publish URL");
+            color: Theme.text-secondary;
+            font-size: Theme.font-size-label;
+        }
+        Rectangle {
+            background: Theme.surface-bar;
+            border-radius: Theme.radius-card;
+            min-height: 40px;
+            Text {
+                text: root.full-uri() == "" ? @tr("(not set)") : root.full-uri();
+                color: Theme.text-primary;
+                font-size: Theme.font-size-label;
+                horizontal-alignment: left;
+                vertical-alignment: center;
+                overflow: elide;
+                x: Theme.padding-card;
+                width: parent.width - Theme.padding-card * 2;
+            }
+        }
+
+        if Bridge.rtmp-destination.last-error != "": Text {
+            text: Bridge.rtmp-destination.last-error;
+            color: Theme.error-fg;
+            font-size: Theme.font-size-label;
+            wrap: word-wrap;
+        }
+    }
+}
+
+export component MixerPage inherits Rectangle {
+    width: 100%;
+    height: 100%;
+    background: Theme.surface-primary;
+
+    // Phase-12 scaffolding: tracks local config edits since last Start.
+    // Kept for future UX (unsaved/dirty badge), intentionally not consumed yet.
+    property <bool> any-edits-pending: false;
+    function reset-dirty() { root.any-edits-pending = false; }
+
+    VerticalLayout {
+        Rectangle {
+            height: 56px;
+            background: Theme.surface-card;
+            HorizontalLayout {
+                padding: Theme.padding-screen;
+                spacing: Theme.spacing-default;
+                Text {
+                    text: @tr("Mixer");
+                    color: Theme.text-primary;
+                    font-size: Theme.font-size-heading;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                }
+                Text {
+                    text:
+                        Bridge.mixer-state == MixerState.running ? @tr("live")
+                        : Bridge.mixer-state == MixerState.starting ? @tr("starting")
+                        : Bridge.mixer-state == MixerState.stopping ? @tr("stopping")
+                        : Bridge.mixer-state == MixerState.error ? @tr("error")
+                        : @tr("idle");
+                    color:
+                        Bridge.mixer-state == MixerState.running ? Theme.success
+                        : Bridge.mixer-state == MixerState.error ? Theme.error-fg
+                        : Theme.text-secondary;
+                    font-size: Theme.font-size-label;
+                    vertical-alignment: center;
+                }
+                TextButton {
+                    label: @tr("close-panel-button" => "Done");
+                    clicked => { Bridge.active-panel = Panel.none; }
+                }
+            }
+        }
+
+        ScrollView {
+            mouse-drag-pan-enabled: true;
+            VerticalLayout {
+                spacing: Theme.spacing-default;
+                padding: Theme.padding-screen;
+
+                if Bridge.mixer-error-text != "": Rectangle {
+                    background: Theme.error;
+                    border-radius: Theme.radius-card;
+                    min-height: 40px;
+                    Text {
+                        text: Bridge.mixer-error-text;
+                        color: Theme.text-primary;
+                        font-size: Theme.font-size-label;
+                        wrap: word-wrap;
+                        x: Theme.padding-card;
+                        width: parent.width - Theme.padding-card * 2;
+                        vertical-alignment: center;
+                    }
+                }
+
+                SettingsSection {
+                    title: @tr("CANVAS");
+                    MixerCanvasControls {
+                        canvas-edited => { root.any-edits-pending = true; }
+                    }
+                }
+
+                SettingsSection {
+                    title: @tr("SOURCE A");
+                    SrtSourceRow {
+                        title: @tr("Source A");
+                        slot-label: "a";
+                        data <=> Bridge.srt-source-a;
+                        edited => { root.any-edits-pending = true; }
+                    }
+                    MixerSlotControls {
+                        title: @tr("Mix — Source A");
+                        data <=> Bridge.srt-source-a;
+                    }
+                }
+
+                SettingsSection {
+                    title: @tr("SOURCE B");
+                    SrtSourceRow {
+                        title: @tr("Source B");
+                        slot-label: "b";
+                        data <=> Bridge.srt-source-b;
+                        edited => { root.any-edits-pending = true; }
+                    }
+                    MixerSlotControls {
+                        title: @tr("Mix — Source B");
+                        data <=> Bridge.srt-source-b;
+                    }
+                }
+
+                SettingsSection {
+                    title: @tr("DESTINATION");
+                    RtmpDestinationRow {
+                        edited => { root.any-edits-pending = true; }
+                    }
+                }
+
+                // Spacer must match footer height so last section can scroll fully above actions.
+                Rectangle { height: 96px; background: transparent; }
+            }
+        }
+
+        Rectangle {
+            height: 96px;
+            background: Theme.surface-bar;
+            HorizontalLayout {
+                padding: Theme.padding-screen;
+                spacing: Theme.spacing-default;
+                PrimaryButton {
+                    label: @tr("Start");
+                    enabled: Bridge.mixer-state == MixerState.idle || Bridge.mixer-state == MixerState.error;
+                    clicked => {
+                        Bridge.start-mixer-cast();
+                        root.reset-dirty();
+                    }
+                    horizontal-stretch: 1;
+                }
+                DestructiveButton {
+                    label: @tr("Stop");
+                    enabled: Bridge.mixer-state == MixerState.running || Bridge.mixer-state == MixerState.starting;
+                    clicked => { Bridge.stop-mixer-cast(); }
+                    horizontal-stretch: 1;
+                }
+            }
+        }
+    }
+}

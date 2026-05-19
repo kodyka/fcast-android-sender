@@ -237,6 +237,11 @@ export component FullSettingsPage inherits Rectangle {
                         value: @tr("open-panel-action" => "Open");
                         clicked => { Bridge.active-panel = Panel.network; }
                     }
+                    SettingsValueRow {
+                        title: @tr("Mixer");
+                        value: @tr("open-panel-action" => "Open");
+                        clicked => { Bridge.active-panel = Panel.mixer; }
+                    }
                 }
 
                 // ── Section: AUTOMATION ───────────────────────────────────

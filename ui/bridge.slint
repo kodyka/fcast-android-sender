@@ -31,6 +31,14 @@ export enum RecordingState {
     finalizing,
 }
 
+export enum MixerState {
+    idle,
+    starting,
+    running,
+    stopping,
+    error,
+}
+
 export enum AppState {
     Disconnected,
     Connecting,
@@ -88,6 +96,7 @@ export enum Panel {
     debug-log,
     debug-video,
     network,
+    mixer,
 }
 
 export struct QuickAction {
@@ -138,6 +147,37 @@ export struct NetworkInterface {
     address-v4:  string,
     address-v6:  string,
     enabled:     bool,
+}
+
+export struct SrtSource {
+    slot-id:    string,
+    enabled:    bool,
+    uri:        string,
+    latency-ms: int,
+    stream-id:  string,
+    mix-alpha:  float,
+    mix-zorder: int,
+    mix-volume: float,
+    state:      MixerState,
+    last-error: string,
+}
+
+export struct RtmpDestination {
+    node-id:    string,
+    enabled:    bool,
+    uri:        string,
+    stream-key: string,
+    state:      MixerState,
+    last-error: string,
+}
+
+export struct MixerCanvas {
+    node-id:     string,
+    width:       int,
+    height:      int,
+    sample-rate: int,
+    state:       MixerState,
+    last-error:  string,
 }
 
 export global Bridge {
@@ -251,6 +291,57 @@ export global Bridge {
     callback start-migration-server(string); // (bind-addr)
     callback run-migration-test(string); // (test-id: "getinfo" | "crossfade" | "smoke")
     callback stop-migration-server();
+
+    // ── Mixer screen (MVP-PHASE-11) ──────────────────────────────────────
+    in-out property <SrtSource> srt-source-a: {
+        slot-id:    "",
+        enabled:    true,
+        uri:        "",
+        latency-ms: 2000,
+        stream-id:  "",
+        mix-alpha:  1.0,
+        mix-zorder: 0,
+        mix-volume: 1.0,
+        state:      MixerState.idle,
+        last-error: "",
+    };
+    in-out property <SrtSource> srt-source-b: {
+        slot-id:    "",
+        enabled:    true,
+        uri:        "",
+        latency-ms: 2000,
+        stream-id:  "",
+        mix-alpha:  1.0,
+        mix-zorder: 1,
+        mix-volume: 1.0,
+        state:      MixerState.idle,
+        last-error: "",
+    };
+    in-out property <RtmpDestination> rtmp-destination: {
+        node-id:    "",
+        enabled:    true,
+        uri:        "",
+        stream-key: "",
+        state:      MixerState.idle,
+        last-error: "",
+    };
+    in-out property <MixerCanvas> mixer-canvas: {
+        node-id:     "",
+        width:       1280,
+        height:      720,
+        sample-rate: 44100,
+        state:       MixerState.idle,
+        last-error:  "",
+    };
+    in property <MixerState> mixer-state: MixerState.idle;
+    in property <string> mixer-error-text: "";
+
+    callback start-mixer-cast();
+    callback stop-mixer-cast();
+    // (slot-id, alpha, z-order, volume)
+    callback apply-mixer-slot-config(string, float, int, float);
+    // (width-px, height-px, sample-rate-hz)
+    callback apply-mixer-canvas(int, int, int);
 
     // ── Public functions (callable from Slint) ───────────────────────────
     public function change-state(to: AppState) {
