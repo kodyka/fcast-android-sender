@@ -37,6 +37,8 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
+          # CI intentionally validates the arm64 Android path only.
+          # Cargo.toml still lists the other Android targets for local/release builds.
           targets: aarch64-linux-android
 
       - name: Install Linux build dependencies
@@ -88,6 +90,9 @@ jobs:
           echo "ANDROID_NDK_ROOT=$GITHUB_WORKSPACE/thirdparty/android-ndk-r25c" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_HOME=$GITHUB_WORKSPACE/thirdparty/android-ndk-r25c" >> "$GITHUB_ENV"
           echo "GSTREAMER_ROOT_ANDROID=$GITHUB_WORKSPACE/thirdparty/gstreamer-1.0-android-universal-1.28.0" >> "$GITHUB_ENV"
+
+      - name: Build GStreamer Android JNI glue
+        run: bash ci/build-gstreamer-android-glue.sh
 
       - name: Cargo check
         run: cargo check --target aarch64-linux-android

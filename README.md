@@ -47,6 +47,10 @@ $ ./gradlew assembleDebug
 $ ./gradlew installDebug
 ```
 
+CI intentionally validates the `aarch64-linux-android` path only for speed.
+The crate metadata still lists the other Android targets for local and release
+builds.
+
 ## Repository layout
 
 - `Cargo.toml`, `build.rs`, `src/`: `android-sender` Rust crate

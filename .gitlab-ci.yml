@@ -17,6 +17,10 @@ buildSenderAndroid:
   tags:
     - fcast-instance-runner
   variables:
+    # Runner setup must provide ANDROID_HOME_PATH and THIRDPARTY_DEPS_PATH.
+    # ANDROID_HOME_PATH should point at the Android SDK root.
+    # THIRDPARTY_DEPS_PATH should contain android-ndk-r25c/ and
+    # gstreamer-1.0-android-universal-1.28.0/.
     APP_VERSION_NAME: "1"
     APP_VERSION_CODE: "1"
   script:
@@ -25,6 +29,7 @@ buildSenderAndroid:
     - export ANDROID_NDK_ROOT="$THIRDPARTY_DEPS_PATH/android-ndk-r25c"
     - export ANDROID_NDK_HOME="$THIRDPARTY_DEPS_PATH/android-ndk-r25c"
     - export GSTREAMER_ROOT_ANDROID="$THIRDPARTY_DEPS_PATH/gstreamer-1.0-android-universal-1.28.0"
+    - bash ci/build-gstreamer-android-glue.sh
     - cargo build --release --target aarch64-linux-android
     - ./gradlew assembleRelease -PversionName=$ANDROID_VERSION_NAME -PversionCode=$ANDROID_VERSION_CODE
     - mkdir -p "./$ANDROID_VERSION_CODE"
