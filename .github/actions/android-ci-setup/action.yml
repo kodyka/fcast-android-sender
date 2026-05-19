@@ -59,7 +59,13 @@ runs:
         mkdir -p thirdparty
         curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdline-tools.zip
         unzip -q /tmp/cmdline-tools.zip -d thirdparty/android-sdk-commandlinetools
-        yes | thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --licenses
+        # Accept all SDK licenses. `yes |` triggers SIGPIPE on the writer once
+        # sdkmanager closes stdin, which combined with `pipefail` makes the step
+        # exit non-zero even though "All SDK package licenses accepted" was printed.
+        # Use a finite `printf` stream so the writer exits 0 on its own.
+        printf 'y\n%.0s' $(seq 1 200) \
+          | thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager \
+              --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" --licenses
         SDK_PACKAGES=(${{ inputs.android-platforms }} ${{ inputs.android-build-tools }})
         thirdparty/android-sdk-commandlinetools/cmdline-tools/bin/sdkmanager \
           --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" \
