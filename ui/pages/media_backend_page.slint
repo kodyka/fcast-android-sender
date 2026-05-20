@@ -3,6 +3,7 @@ import { Bridge, Panel, MediaBackendKind, MediaBackendState } from "../bridge.sl
 import { Theme } from "../theme.slint";
 import { PrimaryButton, DestructiveButton, TextButton } from "../components/buttons.slint";
 import { SettingsSection } from "../components/settings_rows.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 export component MediaBackendPage inherits Rectangle {
     in-out property <bool> any-edits-pending: false;
@@ -12,23 +13,9 @@ export component MediaBackendPage inherits Rectangle {
     background: Theme.surface-primary;
 
     VerticalLayout {
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Media backend");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Media backend");
+            close-clicked => { Bridge.active-panel = Panel.none; }
         }
 
         ScrollView {

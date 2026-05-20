@@ -16,6 +16,7 @@ import { VerticalBox, ScrollView } from "std-widgets.slint";
 import { Bridge, Panel } from "../bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, TextButton } from "../components/buttons.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 component DebugPageInner inherits VerticalBox {
     alignment: start;
@@ -71,23 +72,9 @@ export component FullDebugPage inherits Rectangle {
 
     VerticalLayout {
         // ── Header ────────────────────────────────────────────────────────
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Debug panel");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Debug panel");
+            close-clicked => { Bridge.active-panel = Panel.none; }
         }
 
         // ── Body ──────────────────────────────────────────────────────────

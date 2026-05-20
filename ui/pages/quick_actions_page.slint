@@ -16,6 +16,7 @@ import { TextButton } from "../components/buttons.slint";
 import {
     SettingsSection,
 } from "../components/settings_rows.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 // Internal row sub-component. Same rationale as Phase 22's
 // NetworkInterfaceRow — local state (none here) + clean up/down/toggle
@@ -111,23 +112,9 @@ export component QuickActionsPage inherits Rectangle {
 
     VerticalLayout {
         // ── Header ──────────────────────────────────────────────────────
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Quick actions");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Quick actions");
+            close-clicked => { Bridge.active-panel = Panel.none; }
         }
 
         // ── Overflow banner ─────────────────────────────────────────────

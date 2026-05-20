@@ -13,6 +13,7 @@ import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel } from "../bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, TextButton } from "../components/buttons.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 export component CodecTestPage inherits Rectangle {
     // UI-only stub state.
@@ -32,23 +33,9 @@ export component CodecTestPage inherits Rectangle {
 
     VerticalLayout {
         // ── Header ────────────────────────────────────────────────────────
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Codec test");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Codec test");
+            close-clicked => { Bridge.active-panel = Panel.none; }
         }
 
         // ── Body ──────────────────────────────────────────────────────────

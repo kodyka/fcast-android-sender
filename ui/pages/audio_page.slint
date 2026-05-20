@@ -5,6 +5,7 @@ import { TextButton } from "../components/buttons.slint";
 import {
     SettingsSection, SettingsToggleRow, SettingsValueRow, SettingsSliderRow
 } from "../components/settings_rows.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 export component AudioPage inherits Rectangle {
     width: 100%;
@@ -13,20 +14,9 @@ export component AudioPage inherits Rectangle {
 
     VerticalLayout {
         // Header
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Audio");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton { label: @tr("close-panel-button" => "Done"); clicked => { Bridge.active-panel = Panel.none; } }
-            }
+        PanelHeader {
+            title: @tr("Audio");
+            close-clicked => { Bridge.active-panel = Panel.none; }
         }
 
         ScrollView {

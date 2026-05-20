@@ -21,6 +21,7 @@ import {
     SettingsValueRow,
     SettingsToggleRow,
 } from "../components/settings_rows.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 export component RecordingPage inherits Rectangle {
     // ── UI-only stub state ──────────────────────────────────────────────
@@ -74,23 +75,9 @@ export component RecordingPage inherits Rectangle {
 
     VerticalLayout {
         // ── Header ──────────────────────────────────────────────────────
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Recording");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Recording");
+            close-clicked => { Bridge.active-panel = Panel.none; }
         }
 
         ScrollView {

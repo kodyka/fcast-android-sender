@@ -16,6 +16,7 @@ import { ScrollView, LineEdit } from "std-widgets.slint";
 import { Bridge, Panel, Macro, MacroStep } from "../bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton, PrimaryButton, DestructiveButton } from "../components/buttons.slint";
+import { PanelHeaderActions } from "../components/panel_chrome.slint";
 
 export component MacroEditPage inherits Rectangle {
     in-out property <bool>   show-add-step-picker: false;
@@ -37,31 +38,19 @@ export component MacroEditPage inherits Rectangle {
     background: Theme.surface-primary;
 
     VerticalLayout {
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                spacing: Theme.spacing-default;
-                Text {
-                    text: Bridge.macro-edit-id == ""
-                        ? @tr("New macro")
-                        : @tr("Edit macro");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("dismiss-dialog-button" => "Cancel");
-                    clicked => { Bridge.active-panel = Panel.macros; }
-                }
-                PrimaryButton {
-                    label: @tr("save-button" => "Save");
-                    clicked => {
-                        Bridge.save-macro(Bridge.macro-edit-id, Bridge.draft-macro-name, Bridge.draft-macro-steps, Bridge.draft-macro-enabled);
-                        Bridge.active-panel = Panel.macros;
-                    }
+        PanelHeaderActions {
+            title: Bridge.macro-edit-id == ""
+                ? @tr("New macro")
+                : @tr("Edit macro");
+            TextButton {
+                label: @tr("dismiss-dialog-button" => "Cancel");
+                clicked => { Bridge.active-panel = Panel.macros; }
+            }
+            PrimaryButton {
+                label: @tr("save-button" => "Save");
+                clicked => {
+                    Bridge.save-macro(Bridge.macro-edit-id, Bridge.draft-macro-name, Bridge.draft-macro-steps, Bridge.draft-macro-enabled);
+                    Bridge.active-panel = Panel.macros;
                 }
             }
         }

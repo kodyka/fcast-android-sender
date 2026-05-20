@@ -3,6 +3,7 @@ import { Bridge, Panel, SrtSource, MixerState } from "../bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, TextButton, DestructiveButton } from "../components/buttons.slint";
 import { SettingsSection, SettingsSliderRow } from "../components/settings_rows.slint";
+import { PanelHeaderActions } from "../components/panel_chrome.slint";
 
 component SrtSourceRow inherits Rectangle {
     in-out property <SrtSource> data;
@@ -347,37 +348,25 @@ export component MixerPage inherits Rectangle {
     function reset-dirty() { root.any-edits-pending = false; }
 
     VerticalLayout {
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                spacing: Theme.spacing-default;
-                Text {
-                    text: @tr("Mixer");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                Text {
-                    text:
-                        Bridge.mixer-state == MixerState.running ? @tr("live")
-                        : Bridge.mixer-state == MixerState.starting ? @tr("starting")
-                        : Bridge.mixer-state == MixerState.stopping ? @tr("stopping")
-                        : Bridge.mixer-state == MixerState.error ? @tr("error")
-                        : @tr("idle");
-                    color:
-                        Bridge.mixer-state == MixerState.running ? Theme.success
-                        : Bridge.mixer-state == MixerState.error ? Theme.error-fg
-                        : Theme.text-secondary;
-                    font-size: Theme.font-size-label;
-                    vertical-alignment: center;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
+        PanelHeaderActions {
+            title: @tr("Mixer");
+            Text {
+                text:
+                    Bridge.mixer-state == MixerState.running ? @tr("live")
+                    : Bridge.mixer-state == MixerState.starting ? @tr("starting")
+                    : Bridge.mixer-state == MixerState.stopping ? @tr("stopping")
+                    : Bridge.mixer-state == MixerState.error ? @tr("error")
+                    : @tr("idle");
+                color:
+                    Bridge.mixer-state == MixerState.running ? Theme.success
+                    : Bridge.mixer-state == MixerState.error ? Theme.error-fg
+                    : Theme.text-secondary;
+                font-size: Theme.font-size-label;
+                vertical-alignment: center;
+            }
+            TextButton {
+                label: @tr("close-panel-button" => "Done");
+                clicked => { Bridge.active-panel = Panel.none; }
             }
         }
 

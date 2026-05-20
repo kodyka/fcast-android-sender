@@ -14,6 +14,7 @@ import { Bridge, Panel, CastHistoryEntry } from "../bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import { ConfirmDialog } from "../components/confirm_dialog.slint";
+import { PanelHeaderActions } from "../components/panel_chrome.slint";
 
 export component CastHistoryPage inherits Rectangle {
     in-out property <bool> show-clear-confirm: false;
@@ -47,30 +48,15 @@ export component CastHistoryPage inherits Rectangle {
     }
 
     VerticalLayout {
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                spacing: Theme.spacing-default;
-
-                Text {
-                    text: @tr("Cast history");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-
-                TextButton {
-                    label: @tr("Clear all");
-                    clicked => { root.show-clear-confirm = true; }
-                }
-
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
+        PanelHeaderActions {
+            title: @tr("Cast history");
+            TextButton {
+                label: @tr("Clear all");
+                clicked => { root.show-clear-confirm = true; }
+            }
+            TextButton {
+                label: @tr("close-panel-button" => "Done");
+                clicked => { Bridge.active-panel = Panel.none; }
             }
         }
 
