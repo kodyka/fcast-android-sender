@@ -152,11 +152,19 @@ export component LineEditBase inherits Rectangle {
             }
 
             key-pressed(event) => {
-                root.key-pressed(event)
+                let result = root.key-pressed(event);
+                if (result == accept) {
+                    return accept;
+                }
+                reject
             }
 
             key-released(event) => {
-                root.key-released(event)
+                let result = root.key-released(event);
+                if (result == accept) {
+                    return accept;
+                }
+                reject
             }
         }
     }

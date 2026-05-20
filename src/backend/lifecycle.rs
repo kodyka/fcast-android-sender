@@ -36,10 +36,10 @@ impl BackendLifecycle {
         let apply_lifecycle = Arc::clone(&self);
         let apply_weak = ui.as_weak();
         bridge.on_apply_media_backend(move || {
+            let config = read_config_from_bridge(&apply_weak);
             let lifecycle = Arc::clone(&apply_lifecycle);
             let weak = apply_weak.clone();
             tokio::spawn(async move {
-                let config = read_config_from_bridge(&weak);
                 if let Err(err) = lifecycle.apply(config, weak.clone()).await {
                     push_error(&weak, &err.to_string());
                 }
@@ -49,10 +49,10 @@ impl BackendLifecycle {
         let save_lifecycle = Arc::clone(&self);
         let save_weak = ui.as_weak();
         bridge.on_save_media_backend_settings(move || {
+            let config = read_config_from_bridge(&save_weak);
             let lifecycle = Arc::clone(&save_lifecycle);
             let weak = save_weak.clone();
             tokio::spawn(async move {
-                let config = read_config_from_bridge(&weak);
                 match config.save(&lifecycle.files_dir) {
                     Ok(()) => push_saved(&weak),
                     Err(err) => push_error(&weak, &format!("save failed: {err}")),
@@ -62,9 +62,9 @@ impl BackendLifecycle {
 
         let probe_weak = ui.as_weak();
         bridge.on_probe_media_backend(move || {
+            let config = read_config_from_bridge(&probe_weak);
             let weak = probe_weak.clone();
             tokio::spawn(async move {
-                let config = read_config_from_bridge(&weak);
                 push_state(&weak, crate::MediaBackendState::Probing);
                 let backend = build_backend(&config);
                 match backend.probe().await {

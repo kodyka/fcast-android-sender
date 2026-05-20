@@ -206,6 +206,7 @@ export global Bridge {
     // ── Network interfaces (Phase 8 / Cluster A3) ───────────────────────
     in property <[NetworkInterface]> network-interfaces: [];
     callback set-interface-enabled(string, bool);
+    callback back-requested();
     // ── Recording (Phase 8 / Cluster A4) ────────────────────────────────
     in property <RecordingState> recording-state:    RecordingState.idle;
     in property <int>            recording-elapsed-s: 0;

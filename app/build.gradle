@@ -21,6 +21,11 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+        ndk {
+            // Local deploy/debug currently targets arm64 only; packaging
+            // all ABI variants produces a universal APK too large to install.
+            abiFilters "arm64-v8a"
+        }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

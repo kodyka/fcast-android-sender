@@ -102,13 +102,14 @@ export component ConnectView inherits Rectangle {
                 }
             }
         }
-        HorizontalLayout {
+        VerticalLayout {
             spacing: Theme.spacing-default;
             ip-input := LineEdit {
                 placeholder-text: @tr("Receiver IP address");
                 horizontal-stretch: 1;
             }
             PrimaryButton {
+                width: parent.width;
                 label: @tr("Connect");
                 enabled: ip-input.text != "";
                 // UI-only — no real connect handler in this phase.

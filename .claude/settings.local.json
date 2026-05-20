@@ -9,7 +9,10 @@
       "Bash(docker info *)",
       "Read(//Users/test/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/i-slint-backend-android-activity-1.16.1/**)",
       "Read(//Users/test/.cargo/registry/**)",
-      "Bash(nix develop *)"
+      "Bash(nix develop *)",
+      "Bash(sed -n '55,80p' /Users/test/Documents/work/fcast-android-sender/ui/pages/debug_video_page.slint)",
+      "Bash(sed -n '48,60p' /Users/test/Documents/work/fcast-android-sender/ui/pages/debug_page.slint)",
+      "Bash(sed -n '65,100p' /Users/test/Documents/work/fcast-android-sender/ui/pages/macro_edit_page.slint)"
     ]
   }
 }

@@ -232,6 +232,41 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
     private int userMaxFps = 30;
 
     @Override
+    public void onBackPressed() {
+        Log.d(TAG, "onBackPressed");
+        nativeBackPressed();
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+            Log.d(TAG, "dispatchKeyEvent ACTION_UP KEYCODE_BACK");
+            nativeBackPressed();
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            Log.d(TAG, "onKeyDown KEYCODE_BACK");
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            Log.d(TAG, "onKeyUp KEYCODE_BACK");
+            nativeBackPressed();
+            return true;
+        }
+        return super.onKeyUp(keyCode, event);
+    }
+
+    @Override
     public void onDisplayAdded(int displayId) { }
 
     @Override
@@ -812,6 +847,11 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
         startActivityForResult(intent, QR_SCAN_REQUEST_CODE);
     }
 
+    // Called from native code
+    private void finishApp() {
+        runOnUiThread(this::finish);
+    }
+
     private void initializeCapture(int resultCode, Intent data) {
         mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
         mediaProjection.registerCallback(projectionCallback, null);
@@ -1106,6 +1146,8 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
     native void nativeCaptureCancelled();
 
     native void nativeQrScanResult(String result);
+
+    native void nativeBackPressed();
 
     public class ProjectionCallback extends MediaProjection.Callback {
         @Override

@@ -80,6 +80,12 @@ lazy_static::lazy_static! {
 }
 
 #[cfg(target_os = "android")]
+lazy_static::lazy_static! {
+    static ref ANDROID_UI: Mutex<Option<slint::Weak<MainWindow>>> = Mutex::new(None);
+    static ref ANDROID_APP: Mutex<Option<PlatformApp>> = Mutex::new(None);
+}
+
+#[cfg(target_os = "android")]
 static CAPTURE_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 #[cfg(target_os = "android")]
@@ -514,6 +520,7 @@ fn migration_test_log_name(test_id: &str) -> &'static str {
 enum JavaMethod {
     StopCapture,
     ScanQr,
+    FinishApp,
 }
 
 #[cfg(target_os = "android")]
@@ -532,6 +539,7 @@ fn call_java_method_no_args(app: &PlatformApp, method: JavaMethod) {
     let method_name = match method {
         JavaMethod::StopCapture => "stopCapture",
         JavaMethod::ScanQr => "scanQr",
+        JavaMethod::FinishApp => "finishApp",
     };
 
     match vm.get_env() {
@@ -545,6 +553,39 @@ fn call_java_method_no_args(app: &PlatformApp, method: JavaMethod) {
 
 #[cfg(not(target_os = "android"))]
 fn call_java_method_no_args(_app: &PlatformApp, _method: JavaMethod) {}
+
+#[cfg(target_os = "android")]
+fn handle_back_request(ui: &MainWindow, app: Option<&PlatformApp>) {
+    let bridge = ui.global::<Bridge>();
+
+    if bridge.get_active_panel() != Panel::None {
+        bridge.set_active_panel(Panel::None);
+        return;
+    }
+
+    if bridge.get_lifecycle() != LifecycleMode::Normal {
+        bridge.set_lifecycle(LifecycleMode::Normal);
+        return;
+    }
+
+    match bridge.get_app_state() {
+        AppState::Disconnected => {
+            if let Some(app) = app {
+                call_java_method_no_args(app, JavaMethod::FinishApp);
+            } else {
+                warn!("Ignoring back press in disconnected state without Android app handle");
+            }
+        }
+        AppState::Connecting | AppState::SelectingSettings => {
+            bridge.invoke_change_state(AppState::Disconnected);
+        }
+        AppState::WaitingForMedia | AppState::Casting => {
+            if let Err(err) = GLOB_EVENT_CHAN.0.send(Event::EndSession { disconnect: true }) {
+                error!(?err, "Failed to send back-requested end-session event");
+            }
+        }
+    }
+}
 
 #[cfg(target_os = "android")]
 fn resolve_android_files_dir(app: &PlatformApp) -> Result<PathBuf> {
@@ -1320,6 +1361,8 @@ fn android_main(app: PlatformApp) {
     slint::android::init(app).unwrap();
 
     let ui = MainWindow::new().unwrap();
+    *ANDROID_UI.lock() = Some(ui.as_weak());
+    *ANDROID_APP.lock() = Some(app_clone.clone());
 
     // Cached snapshot. Re-pushed in full whenever any signal changes.
     #[derive(Clone, Default)]
@@ -2056,6 +2099,17 @@ fn android_main(app: PlatformApp) {
         }
     });
 
+    ui.global::<Bridge>().on_back_requested({
+        let ui_weak = ui.as_weak();
+        let app_clone = app_clone.clone();
+        move || {
+            let Some(ui) = ui_weak.upgrade() else {
+                return;
+            };
+            handle_back_request(&ui, Some(&app_clone));
+        }
+    });
+
     ui.global::<Bridge>().on_start_casting({
         let event_tx = event_tx.clone();
         move |scale_width: i32, scale_height: i32, max_framerate: i32| {
@@ -2768,6 +2822,27 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeQrScanResult<
             "Failed to send device removed event"
         ),
         Err(err) => error!(?err, "Failed to convert jstring to string"),
+    }
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeBackPressed<'local>(
+    _env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+) {
+    info!("nativeBackPressed");
+    let Some(ui_weak) = ANDROID_UI.lock().clone() else {
+        warn!("Ignoring back press before UI initialization");
+        return;
+    };
+    let app = ANDROID_APP.lock().clone();
+
+    if let Err(err) = ui_weak.upgrade_in_event_loop(move |ui| {
+        handle_back_request(&ui, app.as_ref());
+    }) {
+        error!(?err, "Failed to dispatch Android back press to UI");
     }
 }
 
