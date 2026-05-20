@@ -232,7 +232,7 @@
                 echo ""
                 mkdir -p "$GST_ANDROID_DIR"
                 GST_TAR="gstreamer-1.0-android-universal-${gstVersion}.tar.xz"
-                GST_URL="https://gstreamer.freedesktop.org/pkg/android/${gstVersion}/$GST_TAR"
+                GST_URL="https://gstreamer.freedesktop.org/data/pkg/android/${gstVersion}/$GST_TAR"
                 if wget -q --show-progress -O "/tmp/$GST_TAR" "$GST_URL"; then
                   tar xf "/tmp/$GST_TAR" -C "$GST_ANDROID_DIR"
                   rm -f "/tmp/$GST_TAR"

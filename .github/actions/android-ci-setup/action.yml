@@ -87,7 +87,8 @@ runs:
       shell: bash
       run: |
         mkdir -p thirdparty/gstreamer-1.0-android-universal-1.28.0
-        curl -fsSL --retry 5 https://gstreamer.freedesktop.org/pkg/android/1.28.0/gstreamer-1.0-android-universal-1.28.0.tar.xz -o /tmp/gstreamer-android.tar.xz
+        # GStreamer 1.28 Android prebuilts are served from /data/pkg/.
+        curl -fsSL --retry 5 https://gstreamer.freedesktop.org/data/pkg/android/1.28.0/gstreamer-1.0-android-universal-1.28.0.tar.xz -o /tmp/gstreamer-android.tar.xz
         tar -xf /tmp/gstreamer-android.tar.xz -C thirdparty/gstreamer-1.0-android-universal-1.28.0
 
     - name: Export Android toolchain paths
