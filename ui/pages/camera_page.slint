@@ -89,21 +89,21 @@ export component CameraPage inherits Rectangle {
                     title: @tr("SOURCE");
                     SettingsValueRow {
                         title: @tr("Camera");
-                        value: [@tr("Front"), @tr("Back"), @tr("External")][Bridge.camera-idx];
+                        value: [@tr("Front"), @tr("Back"), @tr("External")][Math.clamp(Bridge.camera-idx, 0, 2)];
                         clicked => {
                             Bridge.camera-idx = Math.mod(Bridge.camera-idx + 1, 3);
                         }
                     }
                     SettingsValueRow {
                         title: @tr("Resolution");
-                        value: ["480p", "720p", "1080p", "4K"][Bridge.resolution-idx];
+                        value: ["480p", "720p", "1080p", "4K"][Math.clamp(Bridge.resolution-idx, 0, 3)];
                         clicked => {
                             Bridge.resolution-idx = Math.mod(Bridge.resolution-idx + 1, 4);
                         }
                     }
                     SettingsValueRow {
                         title: @tr("Framerate");
-                        value: ["24 fps", "30 fps", "60 fps"][Bridge.framerate-idx];
+                        value: ["24 fps", "30 fps", "60 fps"][Math.clamp(Bridge.framerate-idx, 0, 2)];
                         clicked => {
                             Bridge.framerate-idx = Math.mod(Bridge.framerate-idx + 1, 3);
                         }
