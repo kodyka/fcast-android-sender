@@ -1,0 +1,45 @@
+// mod.rs
+//
+// Copyright 2026 Stéphane Cerveau <scerveau@igalia.com>
+//
+// This file is part of GstPrinceOfParser
+//
+// SPDX-License-Identifier: GPL-3.0-only
+
+pub mod discoverer;
+pub mod event;
+pub mod inspect_format;
+pub mod manager;
+pub mod pipeline;
+pub mod registry;
+
+pub use event::{create_event_channel, EventReceiver, EventSender, PipelineEvent, PipelineState};
+pub use manager::{PipelineInfo, PipelineManager};
+pub use pipeline::Pipeline;
+
+/// Grace period in milliseconds to wait for bus watcher to shutdown
+pub const SHUTDOWN_GRACE_PERIOD_MS: u64 = 150;
+
+/// Maximum number of pipelines that can be created to prevent resource exhaustion
+pub const MAX_PIPELINES: usize = 100;
+
+#[cfg(test)]
+mod event_tests;
+
+#[cfg(test)]
+mod manager_tests;
+
+#[cfg(test)]
+mod pipeline_tests;
+
+#[cfg(test)]
+mod playback_mode_tests;
+
+#[cfg(test)]
+mod discoverer_tests;
+
+#[cfg(test)]
+mod inspect_format_tests;
+
+#[cfg(test)]
+mod registry_tests;

@@ -1,0 +1,140 @@
+// registry_tests.rs
+//
+// Copyright 2026 Stéphane Cerveau <scerveau@igalia.com>
+//
+// This file is part of GstPrinceOfParser
+//
+// SPDX-License-Identifier: GPL-3.0-only
+
+use crate::gst::registry::{get_element, get_elements, DetailLevel};
+
+#[test]
+fn test_get_elements_none() {
+    let _ = gstreamer::init();
+    let elements = get_elements(DetailLevel::None);
+
+    assert!(!elements.is_empty());
+    assert!(elements.iter().any(|e| e.name == "fakesink"));
+
+    // None level should only have name and plugin_name
+    let fakesink = elements.iter().find(|e| e.name == "fakesink").unwrap();
+    assert!(!fakesink.plugin_name.is_empty());
+    assert!(fakesink.long_name.is_none());
+    assert!(fakesink.klass.is_none());
+    assert!(fakesink.description.is_none());
+    assert!(fakesink.author.is_none());
+    assert!(fakesink.rank.is_none());
+    assert!(fakesink.pad_templates.is_none());
+    assert!(fakesink.plugin_info.is_none());
+    assert!(fakesink.hierarchy.is_none());
+    assert!(fakesink.properties.is_none());
+    assert!(fakesink.signals.is_none());
+    assert!(fakesink.uri_info.is_none());
+    assert!(fakesink.has_clocking.is_none());
+}
+
+#[test]
+fn test_get_elements_summary() {
+    let _ = gstreamer::init();
+    let elements = get_elements(DetailLevel::Summary);
+
+    let fakesink = elements.iter().find(|e| e.name == "fakesink").unwrap();
+    assert!(fakesink.long_name.is_some());
+    assert!(fakesink.klass.is_some());
+    assert!(fakesink.description.is_some());
+    assert!(fakesink.author.is_some());
+    assert!(fakesink.rank.is_some());
+    // Summary should not include pad templates or full-detail fields
+    assert!(fakesink.pad_templates.is_none());
+    assert!(fakesink.plugin_info.is_none());
+    assert!(fakesink.hierarchy.is_none());
+    assert!(fakesink.properties.is_none());
+    assert!(fakesink.signals.is_none());
+    assert!(fakesink.uri_info.is_none());
+    assert!(fakesink.has_clocking.is_none());
+}
+
+#[test]
+fn test_get_elements_full() {
+    let _ = gstreamer::init();
+    let elements = get_elements(DetailLevel::Full);
+
+    let fakesink = elements.iter().find(|e| e.name == "fakesink").unwrap();
+    assert!(fakesink.long_name.is_some());
+    assert!(fakesink.pad_templates.is_some());
+
+    let pads = fakesink.pad_templates.as_ref().unwrap();
+    assert!(!pads.is_empty());
+    assert!(pads
+        .iter()
+        .any(|p| p.direction == "sink" && p.presence == "always"));
+
+    // Full detail should include plugin_info, hierarchy, and properties
+    assert!(fakesink.plugin_info.is_some());
+    let pi = fakesink.plugin_info.as_ref().unwrap();
+    assert!(!pi.name.is_empty());
+    assert!(!pi.version.is_empty());
+
+    assert!(fakesink.hierarchy.is_some());
+    let hierarchy = fakesink.hierarchy.as_ref().unwrap();
+    assert!(!hierarchy.is_empty());
+    // hierarchy is root-first: GObject → ... → GstFakeSink
+    assert_eq!(hierarchy.first().unwrap(), "GObject");
+    assert!(hierarchy.last().unwrap().contains("FakeSink"));
+
+    assert!(fakesink.properties.is_some());
+    let props = fakesink.properties.as_ref().unwrap();
+    assert!(!props.is_empty());
+    // fakesink should have a "dump" property
+    assert!(props.iter().any(|p| p.name == "dump"));
+
+    assert!(fakesink.has_clocking.is_some());
+}
+
+#[test]
+fn test_elements_sorted() {
+    let _ = gstreamer::init();
+    let elements = get_elements(DetailLevel::None);
+
+    for window in elements.windows(2) {
+        assert!(
+            window[0].name <= window[1].name,
+            "Elements not sorted: '{}' > '{}'",
+            window[0].name,
+            window[1].name
+        );
+    }
+}
+
+#[test]
+fn test_invalid_detail_level() {
+    let result = "invalid".parse::<DetailLevel>();
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_detail_level_parse() {
+    assert_eq!("none".parse::<DetailLevel>().unwrap(), DetailLevel::None);
+    assert_eq!(
+        "summary".parse::<DetailLevel>().unwrap(),
+        DetailLevel::Summary
+    );
+    assert_eq!("full".parse::<DetailLevel>().unwrap(), DetailLevel::Full);
+}
+
+#[test]
+fn test_get_element_found() {
+    let _ = gstreamer::init();
+    let info = get_element("fakesink", DetailLevel::Summary);
+    assert!(info.is_some());
+    let info = info.unwrap();
+    assert_eq!(info.name, "fakesink");
+    assert!(info.long_name.is_some());
+}
+
+#[test]
+fn test_get_element_not_found() {
+    let _ = gstreamer::init();
+    let info = get_element("nonexistent_element_xyz", DetailLevel::None);
+    assert!(info.is_none());
+}

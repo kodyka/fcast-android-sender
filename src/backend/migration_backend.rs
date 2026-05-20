@@ -20,6 +20,11 @@ impl MediaBackend for MigrationBackend {
     }
 
     async fn probe(&self) -> Result<BackendStatus> {
+        // Ensures the in-process runtime threads are running; idempotent.
+        tokio::task::spawn_blocking(runtime::start_graph_runtime)
+            .await
+            .context("migration probe: spawn_blocking join")??;
+
         let response = self
             .dispatch("getinfo", json!({}))
             .await

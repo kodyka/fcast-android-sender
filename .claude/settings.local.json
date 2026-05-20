@@ -12,7 +12,9 @@
       "Bash(nix develop *)",
       "Bash(sed -n '55,80p' /Users/test/Documents/work/fcast-android-sender/ui/pages/debug_video_page.slint)",
       "Bash(sed -n '48,60p' /Users/test/Documents/work/fcast-android-sender/ui/pages/debug_page.slint)",
-      "Bash(sed -n '65,100p' /Users/test/Documents/work/fcast-android-sender/ui/pages/macro_edit_page.slint)"
+      "Bash(sed -n '65,100p' /Users/test/Documents/work/fcast-android-sender/ui/pages/macro_edit_page.slint)",
+      "mcp__plugin_claude-code-home-manager_filesystem__directory_tree",
+      "mcp__plugin_claude-code-home-manager_filesystem__list_directory"
     ]
   }
 }

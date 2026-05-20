@@ -73,6 +73,18 @@ impl BackendLifecycle {
                 }
             });
         });
+
+        Arc::clone(&self).autostart(ui.as_weak());
+    }
+
+    fn autostart(self: Arc<Self>, weak: Weak<MainWindow>) {
+        push_state(&weak, crate::MediaBackendState::Probing);
+        tokio::spawn(async move {
+            match current().probe().await {
+                Ok(status) => push_status(&weak, status),
+                Err(err) => push_error(&weak, &err.to_string()),
+            }
+        });
     }
 
     async fn apply(&self, config: StoredBackendConfig, weak: Weak<MainWindow>) -> Result<()> {
@@ -183,5 +195,131 @@ mod tests {
         let dir = tempdir().unwrap();
         let loaded = StoredBackendConfig::load(dir.path()).unwrap();
         assert_eq!(loaded.kind, BackendKind::Migration);
+    }
+
+    #[test]
+    fn test_switch_media_backend_to_gstpop_integration() {
+        use std::sync::Mutex as StdMutex;
+        use tokio::net::TcpListener;
+        use tokio_tungstenite::accept_hdr_async;
+        use tokio_tungstenite::tungstenite::Message;
+        use futures_util::{SinkExt, StreamExt};
+        use serde_json::{json, Value};
+
+        // Create a multi-threaded tokio runtime for background tasks
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let _guard = rt.enter();
+
+        // 1. Initialize Slint test backend with mock time
+        i_slint_backend_testing::init_integration_test_with_mock_time();
+
+        // 2. Start mock WebSocket server on an ephemeral port
+        let listener = rt.block_on(async { TcpListener::bind("127.0.0.1:0").await }).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let mock_url = format!("ws://127.0.0.1:{port}");
+
+        let auth_ok = Arc::new(StdMutex::new(false));
+        let auth_ok_cb = Arc::clone(&auth_ok);
+
+        rt.spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let callback = move |req: &tokio_tungstenite::tungstenite::handshake::server::Request, response: tokio_tungstenite::tungstenite::handshake::server::Response| {
+                if let Some(auth) = req.headers().get("Authorization") {
+                    if auth.to_str().unwrap() == "mock-key" {
+                        *auth_ok_cb.lock().unwrap() = true;
+                    }
+                }
+                Ok(response)
+            };
+            let mut ws = accept_hdr_async(stream, callback).await.unwrap();
+            while let Some(msg) = ws.next().await {
+                if let Ok(Message::Text(text)) = msg {
+                    let req: Value = serde_json::from_str(&text).unwrap();
+                    let id = req["id"].as_str().unwrap().to_owned();
+                    let method = req["method"].as_str().unwrap();
+                    let reply = match method {
+                        "get_version" => json!({
+                            "jsonrpc": "2.0",
+                            "id": id,
+                            "result": { "version": "v1.2.3" }
+                        }),
+                        "get_pipeline_count" => json!({
+                            "jsonrpc": "2.0",
+                            "id": id,
+                            "result": { "count": 2 }
+                        }),
+                        _ => json!({
+                            "jsonrpc": "2.0",
+                            "id": id,
+                            "error": { "code": -32601, "message": "Method not found" }
+                        }),
+                    };
+                    let _ = ws.send(Message::Text(reply.to_string().into())).await;
+                }
+            }
+        });
+
+        // 3. Create BackendLifecycle with temp files dir
+        let dir = tempdir().unwrap();
+        let lifecycle = Arc::new(BackendLifecycle::new(dir.path().to_path_buf()));
+
+        // 4. Instantiate UI window
+        let ui = crate::MainWindow::new().unwrap();
+
+        // 5. Register the lifecycle
+        lifecycle.register(&ui);
+
+        let ui_weak = ui.as_weak();
+        let auth_ok_check = Arc::clone(&auth_ok);
+
+        slint::spawn_local(async move {
+            let ui = ui_weak.upgrade().unwrap();
+            let bridge = ui.global::<crate::Bridge>();
+
+            // 6. Process initial autostart logic (Migration backend)
+            for _ in 0..20 {
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+
+            // 7. Verify the bridge is initially connected/ready as Migration
+            assert_eq!(bridge.get_media_backend(), crate::MediaBackendKind::Migration);
+
+            // 8. Simulate UI page switching to gst-pop and entering configuration
+            bridge.set_media_backend(crate::MediaBackendKind::GstPop);
+            bridge.set_gstpop_url(mock_url.into());
+            bridge.set_gstpop_api_key("mock-key".into());
+            bridge.set_gstpop_pipeline_id("0".into());
+
+            // 9. Invoke apply callback (simulate clicking the Apply button in media_backend_page.slint)
+            bridge.invoke_apply_media_backend();
+
+            // 10. Spin the event loop to let GstPop connection process
+            let mut success = false;
+            for _ in 0..100 {
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+
+                if bridge.get_media_backend_state() == crate::MediaBackendState::Ready {
+                    success = true;
+                    break;
+                }
+            }
+
+            assert!(success, "Backend state failed to transition to Ready");
+            assert_eq!(
+                bridge.get_media_backend_status_text().as_str(),
+                "gst-pop v1.2.3 - 2 pipeline(s)"
+            );
+            assert!(*auth_ok_check.lock().unwrap(), "Authorization header was missing or incorrect");
+
+            // 11. Clean up
+            let _ = current().shutdown().await;
+
+            slint::quit_event_loop().unwrap();
+        }).unwrap();
+
+        slint::run_event_loop().unwrap();
     }
 }

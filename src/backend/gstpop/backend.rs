@@ -60,6 +60,12 @@ impl MediaBackend for GstPopBackend {
     }
 
     async fn probe(&self) -> Result<BackendStatus> {
+        if super::embedded::is_localhost(&self.url) {
+            super::embedded::ensure_started(super::embedded::url_port(&self.url))
+                .await
+                .context("start embedded gst-pop")?;
+        }
+
         let info = self
             .raw_call("get_version", json!({}))
             .await

@@ -39,12 +39,14 @@ uuid = { version = "1.18.1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 tracing-subscriber = "0.3"
 gst_rs_webrtc = { package = "gst-plugin-webrtc", version = "0.15", default-features = false, features = ["static"] }
+gstpop = { path = "vendor/gstpop" }
 
 [build-dependencies]
 slint-build = "1.16.0"
 
 [dev-dependencies]
 tempfile = "3"
+i-slint-backend-testing = "1.16.0"
 
 [lib]
 name = "fcastsender"
@@ -62,3 +64,6 @@ target_sdk_version = 34
 lto = "fat"
 codegen-units = 1
 strip = "debuginfo"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+slint = { version = "1.16.0", features = ["backend-winit"] }
