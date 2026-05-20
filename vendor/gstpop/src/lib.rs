@@ -1,3 +1,5 @@
+#[cfg(target_os = "linux")]
+pub mod dbus;
 pub mod error;
 pub mod gst;
 pub mod playback;
