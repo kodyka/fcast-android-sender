@@ -123,6 +123,11 @@ export component MainWindow inherits Window {
             padding-bottom: root.sa-bottom;
             Rectangle {
                 vertical-stretch: 1;
+                // Hide (and disable input on) the background page while any panel is open.
+                // visible:false blocks both rendering and touch/focus events (Slint docs:
+                // common-properties#visible). This prevents background LineEdit elements
+                // from stealing focus through the full-screen panel overlay.
+                visible: Bridge.active-panel == Panel.none;
                 // Conditional elements: only the matching view is instantiated.
                 // Slint docs: https://releases.slint.dev/1.15.1/docs  (Conditional Elements)
                 if Bridge.app-state == AppState.Disconnected:      ConnectView { }
