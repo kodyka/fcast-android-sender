@@ -166,14 +166,14 @@ export component FullSettingsPage inherits Rectangle {
                     }
                     SettingsValueRow {
                         title: @tr("Max resolution");
-                        value: ["480p", "720p", "1080p", "1440p"][root.resolution-idx];
+                        value: ["480p", "720p", "1080p", "1440p"][Math.clamp(root.resolution-idx, 0, 3)];
                         clicked => {
                             root.resolution-idx = Math.mod(root.resolution-idx + 1, 4);
                         }
                     }
                     SettingsValueRow {
                         title: @tr("Max framerate");
-                        value: ["24 fps", "30 fps", "60 fps"][root.framerate-idx];
+                        value: ["24 fps", "30 fps", "60 fps"][Math.clamp(root.framerate-idx, 0, 2)];
                         clicked => {
                             root.framerate-idx = Math.mod(root.framerate-idx + 1, 3);
                         }

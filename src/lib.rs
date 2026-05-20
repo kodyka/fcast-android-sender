@@ -83,6 +83,34 @@ lazy_static::lazy_static! {
 lazy_static::lazy_static! {
     static ref ANDROID_UI: Mutex<Option<slint::Weak<MainWindow>>> = Mutex::new(None);
     static ref ANDROID_APP: Mutex<Option<PlatformApp>> = Mutex::new(None);
+    /// Dedicated runtime for gst-pop service JNI calls. Separate from the
+    /// Slint event-loop runtime so binder-thread calls never block the UI.
+    pub(crate) static ref HOST_RUNTIME: tokio::runtime::Runtime =
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .thread_name("gstpop-host")
+            .build()
+            .expect("build HOST_RUNTIME");
+}
+
+#[cfg(target_os = "android")]
+pub(crate) struct AndroidCtx {
+    pub vm: jni::JavaVM,
+    pub activity: jni::objects::JObject<'static>,
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn android_context() -> anyhow::Result<AndroidCtx> {
+    let app = ANDROID_APP
+        .lock()
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("android app not installed"))?;
+    let vm_ptr = app.vm_as_ptr() as *mut jni::sys::JavaVM;
+    let activity_ptr = app.activity_as_ptr() as *mut jni::sys::_jobject;
+    let vm = unsafe { jni::JavaVM::from_raw(vm_ptr)? };
+    let activity = unsafe { jni::objects::JObject::from_raw(activity_ptr) };
+    Ok(AndroidCtx { vm, activity })
 }
 
 #[cfg(target_os = "android")]
@@ -2844,6 +2872,64 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeBackPressed<'
     }) {
         error!(?err, "Failed to dispatch Android back press to UI");
     }
+}
+
+// ── gst-pop service host JNI bridge ──────────────────────────────────────────
+// Symbols match GstPopServiceBridge in the `org.fcast.android.sender` package.
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeStartGstPopServiceHost<
+    'local,
+>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+    config_json: jni::objects::JString<'local>,
+) -> jni::sys::jstring {
+    let config = jstring_to_string(&mut env, &config_json).unwrap_or_default();
+    let port = parse_gstpop_config_port(&config).unwrap_or(9000);
+    let status = HOST_RUNTIME.block_on(async {
+        crate::backend::gstpop::embedded::start_embedded(port).await
+    });
+    let json = serde_json::to_string(&status).unwrap_or_else(|_| "{}".into());
+    env.new_string(json).expect("new_string").into_raw()
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeStopGstPopServiceHost<
+    'local,
+>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+) -> jni::sys::jstring {
+    let status = HOST_RUNTIME
+        .block_on(async { crate::backend::gstpop::embedded::stop_embedded().await });
+    let json = serde_json::to_string(&status).unwrap_or_else(|_| "{}".into());
+    env.new_string(json).expect("new_string").into_raw()
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeGetGstPopServiceStatus<
+    'local,
+>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+) -> jni::sys::jstring {
+    let status = crate::backend::gstpop::embedded::embedded_status();
+    let json = serde_json::to_string(&status).unwrap_or_else(|_| "{}".into());
+    env.new_string(json).expect("new_string").into_raw()
+}
+
+#[cfg(target_os = "android")]
+fn parse_gstpop_config_port(json: &str) -> Option<u16> {
+    let v: serde_json::Value = serde_json::from_str(json).ok()?;
+    let url = v.get("gstpop_url")?.as_str()?;
+    Some(crate::backend::gstpop::embedded::url_port(url))
 }
 
 #[cfg(test)]

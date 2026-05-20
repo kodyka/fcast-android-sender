@@ -40,7 +40,7 @@ export component AudioPage inherits Rectangle {
                     title: @tr("INPUT");
                     SettingsValueRow {
                         title: @tr("Source");
-                        value: [@tr("Microphone"), @tr("System audio"), @tr("Both")][Bridge.audio-source-idx];
+                        value: [@tr("Microphone"), @tr("System audio"), @tr("Both")][Math.clamp(Bridge.audio-source-idx, 0, 2)];
                         clicked => { Bridge.audio-source-idx = Math.mod(Bridge.audio-source-idx + 1, 3); }
                     }
                     SettingsToggleRow {
@@ -60,7 +60,7 @@ export component AudioPage inherits Rectangle {
                     title: @tr("ENCODING");
                     SettingsValueRow {
                         title: @tr("Bitrate");
-                        value: [@tr("64 kbps"), @tr("128 kbps"), @tr("192 kbps"), @tr("256 kbps")][Bridge.audio-bitrate-idx];
+                        value: [@tr("64 kbps"), @tr("128 kbps"), @tr("192 kbps"), @tr("256 kbps")][Math.clamp(Bridge.audio-bitrate-idx, 0, 3)];
                         clicked => { Bridge.audio-bitrate-idx = Math.mod(Bridge.audio-bitrate-idx + 1, 4); }
                     }
                     SettingsValueRow {
