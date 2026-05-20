@@ -1,0 +1,10 @@
+// state/banner.slint — Banner / toast global.
+
+import { BannerSeverity } from "../bridge.slint";
+
+export global BannerBridge {
+    // Rust writes message/severity; auto-hide writes visible.
+    in-out property <string>          message:  "";
+    in-out property <bool>            visible:  false;
+    in-out property <BannerSeverity>  severity: BannerSeverity.info;
+}

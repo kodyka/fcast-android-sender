@@ -1,0 +1,31 @@
+// state/mixer.slint — Mixer state and controls.
+
+import { SrtSource, RtmpDestination, MixerCanvas, MixerState } from "../bridge.slint";
+
+export global Mixer {
+    in-out property <SrtSource> srt-source-a: {
+        slot-id: "", enabled: true, uri: "", latency-ms: 2000,
+        stream-id: "", mix-alpha: 1.0, mix-zorder: 0, mix-volume: 1.0,
+        state: MixerState.idle, last-error: "",
+    };
+    in-out property <SrtSource> srt-source-b: {
+        slot-id: "", enabled: true, uri: "", latency-ms: 2000,
+        stream-id: "", mix-alpha: 1.0, mix-zorder: 1, mix-volume: 1.0,
+        state: MixerState.idle, last-error: "",
+    };
+    in-out property <RtmpDestination> rtmp-destination: {
+        node-id: "", enabled: true, uri: "", stream-key: "",
+        state: MixerState.idle, last-error: "",
+    };
+    in-out property <MixerCanvas> canvas: {
+        node-id: "", width: 1280, height: 720, sample-rate: 44100,
+        state: MixerState.idle, last-error: "",
+    };
+    in property <MixerState> state:      MixerState.idle;
+    in property <string>     error-text: "";
+
+    callback start-cast();
+    callback stop-cast();
+    callback apply-slot-config(slot-id: string, alpha: float, z-order: int, volume: float);
+    callback apply-canvas(width: int, height: int, sample-rate: int);
+}

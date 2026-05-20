@@ -1,0 +1,11 @@
+// state/camera.slint — Camera settings.
+
+export global Camera {
+    in-out property <int>   idx:              1;
+    in-out property <int>   resolution-idx:   2;
+    in-out property <int>   framerate-idx:    1;
+    in-out property <bool>  mirror-front:     true;
+    in-out property <bool>  stabilization:    true;
+    in-out property <bool>  tap-to-focus:     true;
+    in-out property <float> zoom-level:       1.0;
+}

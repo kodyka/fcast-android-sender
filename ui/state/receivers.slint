@@ -1,0 +1,11 @@
+// state/receivers.slint — Device discovery and connection.
+
+import { ReceiverItem } from "../bridge.slint";
+
+export global Receivers {
+    in property <[ReceiverItem]> devices: [];
+    in-out property <string>     selected-id:   "";
+    in-out property <string>     selected-name: "";
+
+    callback connect(string);
+}

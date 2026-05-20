@@ -1,0 +1,24 @@
+// state/index.slint — barrel re-export for all per-feature globals.
+// Import from here in pages/components that need the new globals.
+// Transitional: bridge.slint still holds globals not yet migrated.
+
+import { AppBridge }      from "app_bridge.slint";
+import { PanelBridge }    from "panel_bridge.slint";
+import { BannerBridge }   from "banner.slint";
+import { MediaBackend }   from "media_backend.slint";
+import { Recording }      from "recording.slint";
+import { Casting }        from "casting.slint";
+import { Receivers }      from "receivers.slint";
+import { History }        from "history.slint";
+import { Macros }         from "macros.slint";
+import { Quickbar }       from "quickbar.slint";
+import { BitratePresets } from "bitrate_presets.slint";
+import { Network }        from "network.slint";
+import { Mixer }          from "mixer.slint";
+import { DebugLog }       from "debug_log.slint";
+import { Camera }         from "camera.slint";
+import { Audio }          from "audio.slint";
+
+export { AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
+         Casting, Receivers, History, Macros, Quickbar, BitratePresets,
+         Network, Mixer, DebugLog, Camera, Audio }

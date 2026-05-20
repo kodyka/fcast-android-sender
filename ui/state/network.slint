@@ -1,0 +1,11 @@
+// state/network.slint — Network interface state.
+
+import { NetworkInterface } from "../bridge.slint";
+
+export global Network {
+    in property <[NetworkInterface]> interfaces: [];
+    in-out property <bool>           wifi-aware-enabled: false;
+
+    callback set-interface-enabled(name: string, enabled: bool);
+    callback set-wifi-aware(enabled: bool);
+}

@@ -1,0 +1,12 @@
+// state/quickbar.slint — Quick-action bar state.
+
+import { QuickAction } from "../bridge.slint";
+
+export global Quickbar {
+    in property <[QuickAction]> actions: [];
+
+    callback move-action(from: int, to: int);
+    callback set-action-enabled(idx: int, enabled: bool);
+    callback save-actions();
+    callback invoke(action-id: string);
+}

@@ -13,6 +13,7 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel, RecordingState } from "../bridge.slint";
+import { Recording } from "../state/recording.slint";
 import { Theme } from "../theme.slint";
 import { TextButton, PrimaryButton, DestructiveButton } from "../components/buttons.slint";
 import {
@@ -29,7 +30,7 @@ export component RecordingPage inherits Rectangle {
     in-out property <int>             mock-disk-free-mb: 12480;
 
     // Pure-derived display strings.
-    property <string> elapsed-display: format-elapsed(Bridge.recording-elapsed-s);
+    property <string> elapsed-display: format-elapsed(Recording.elapsed-s);
     property <string> disk-free-display:
         root.mock-disk-free-mb >= 1024
             ? "\{Math.round(root.mock-disk-free-mb / 102.4) / 10.0} GB"
@@ -55,19 +56,19 @@ export component RecordingPage inherits Rectangle {
     // Centralised state transitions — keeps the button click handler
     // readable.
     function on-record-clicked() {
-        if (Bridge.recording-state == RecordingState.idle) {
-            Bridge.start-recording();
-        } else if (Bridge.recording-state == RecordingState.recording) {
-            Bridge.pause-recording();
-        } else if (Bridge.recording-state == RecordingState.paused) {
-            Bridge.resume-recording();
+        if (Recording.state == RecordingState.idle) {
+            Recording.start();
+        } else if (Recording.state == RecordingState.recording) {
+            Recording.pause();
+        } else if (Recording.state == RecordingState.paused) {
+            Recording.resume();
         }
     }
 
     function on-stop-clicked() {
-        if (Bridge.recording-state == RecordingState.recording
-         || Bridge.recording-state == RecordingState.paused) {
-            Bridge.stop-recording();
+        if (Recording.state == RecordingState.recording
+         || Recording.state == RecordingState.paused) {
+            Recording.stop();
         }
     }
 
@@ -115,17 +116,17 @@ export component RecordingPage inherits Rectangle {
                             height: 96px;
                             border-radius: 48px;
                             background:
-                                Bridge.recording-state == RecordingState.idle      ? Theme.recording-dot
-                                : Bridge.recording-state == RecordingState.recording ? Theme.recording-dot
-                                : Bridge.recording-state == RecordingState.paused    ? Theme.accent-active
+                                Recording.state == RecordingState.idle      ? Theme.recording-dot
+                                : Recording.state == RecordingState.recording ? Theme.recording-dot
+                                : Recording.state == RecordingState.paused    ? Theme.accent-active
                                 : Theme.surface-primary;
                             // Inner glyph: red dot (idle), white square (recording),
                             // chevron (paused), spinner placeholder (finalizing).
                             Rectangle {
-                                width: Bridge.recording-state == RecordingState.recording ? 32px : 48px;
-                                height: Bridge.recording-state == RecordingState.recording ? 32px : 48px;
+                                width: Recording.state == RecordingState.recording ? 32px : 48px;
+                                height: Recording.state == RecordingState.recording ? 32px : 48px;
                                 border-radius:
-                                    Bridge.recording-state == RecordingState.recording
+                                    Recording.state == RecordingState.recording
                                         ? 4px       // square stop hint
                                         : 24px;     // dot
                                 background: white;
@@ -149,8 +150,8 @@ export component RecordingPage inherits Rectangle {
                             spacing: Theme.spacing-default;
                             DestructiveButton {
                                 label: @tr("Stop");
-                                enabled: Bridge.recording-state == RecordingState.recording
-                                    || Bridge.recording-state == RecordingState.paused;
+                                enabled: Recording.state == RecordingState.recording
+                                    || Recording.state == RecordingState.paused;
                                 clicked => { root.on-stop-clicked(); }
                             }
                         }

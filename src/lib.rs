@@ -57,7 +57,7 @@ fn spawn_recording_ticker(
                 if let Some(started) = s.started_at {
                     let elapsed = started.elapsed().saturating_sub(s.paused_for).as_secs() as i32;
                     let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                        ui.global::<Bridge>().set_recording_elapsed_s(elapsed);
+                        ui.global::<Recording>().set_elapsed_s(elapsed);
                     });
                 }
             }
@@ -2162,7 +2162,7 @@ fn android_main(app: PlatformApp) {
 
     let recorder_state = Arc::new(tokio::sync::Mutex::new(RecordingTickerState::default()));
 
-    ui.global::<Bridge>().on_start_recording({
+    ui.global::<Recording>().on_start({
         let recorder_state = recorder_state.clone();
         let ui_handle = ui.as_weak();
         move || {
@@ -2175,15 +2175,15 @@ fn android_main(app: PlatformApp) {
                 s.pause_started = None;
                 s.state = RecordingState::Recording;
                 let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                    ui.global::<Bridge>()
-                        .set_recording_state(RecordingState::Recording);
-                    ui.global::<Bridge>().set_recording_elapsed_s(0);
+                    ui.global::<Recording>()
+                        .set_state(RecordingState::Recording);
+                    ui.global::<Recording>().set_elapsed_s(0);
                 });
             });
         }
     });
 
-    ui.global::<Bridge>().on_pause_recording({
+    ui.global::<Recording>().on_pause({
         let recorder_state = recorder_state.clone();
         let ui_handle = ui.as_weak();
         move || {
@@ -2197,14 +2197,14 @@ fn android_main(app: PlatformApp) {
                 s.pause_started = Some(std::time::Instant::now());
                 s.state = RecordingState::Paused;
                 let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                    ui.global::<Bridge>()
-                        .set_recording_state(RecordingState::Paused);
+                    ui.global::<Recording>()
+                        .set_state(RecordingState::Paused);
                 });
             });
         }
     });
 
-    ui.global::<Bridge>().on_resume_recording({
+    ui.global::<Recording>().on_resume({
         let recorder_state = recorder_state.clone();
         let ui_handle = ui.as_weak();
         move || {
@@ -2220,14 +2220,14 @@ fn android_main(app: PlatformApp) {
                 }
                 s.state = RecordingState::Recording;
                 let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                    ui.global::<Bridge>()
-                        .set_recording_state(RecordingState::Recording);
+                    ui.global::<Recording>()
+                        .set_state(RecordingState::Recording);
                 });
             });
         }
     });
 
-    ui.global::<Bridge>().on_stop_recording({
+    ui.global::<Recording>().on_stop({
         let recorder_state = recorder_state.clone();
         let ui_handle = ui.as_weak();
         move || {
@@ -2239,8 +2239,8 @@ fn android_main(app: PlatformApp) {
                     s.state = RecordingState::Finalizing;
                 }
                 let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                    ui.global::<Bridge>()
-                        .set_recording_state(RecordingState::Finalizing);
+                    ui.global::<Recording>()
+                        .set_state(RecordingState::Finalizing);
                 });
 
                 let mut s = recorder_state.lock().await;
@@ -2249,9 +2249,9 @@ fn android_main(app: PlatformApp) {
                 s.pause_started = None;
                 s.state = RecordingState::Idle;
                 let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                    let bridge = ui.global::<Bridge>();
-                    bridge.set_recording_state(RecordingState::Idle);
-                    bridge.set_recording_elapsed_s(0);
+                    let rec = ui.global::<Recording>();
+                    rec.set_state(RecordingState::Idle);
+                    rec.set_elapsed_s(0);
                 });
             });
         }

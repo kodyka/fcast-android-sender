@@ -208,9 +208,7 @@ export global Bridge {
     in property <[NetworkInterface]> network-interfaces: [];
     callback set-interface-enabled(string, bool);
     callback back-requested();
-    // ── Recording (Phase 8 / Cluster A4) ────────────────────────────────
-    in property <RecordingState> recording-state:    RecordingState.idle;
-    in property <int>            recording-elapsed-s: 0;
+    // Recording properties moved to ui/state/recording.slint (step 02).
     // ── Debug log (Phase 8 / Cluster A5) ────────────────────────────────
     in property <[LogEntry]> log-entries: [];
     callback clear-log-entries();
@@ -301,10 +299,7 @@ export global Bridge {
     callback start-casting(scale-width: int, scale-height: int, max-framerate: int);
     callback stop-casting();
     callback invoke-action(string);
-    callback start-recording();
-    callback pause-recording();
-    callback resume-recording();
-    callback stop-recording();
+    // Recording callbacks moved to ui/state/recording.slint (step 02).
     callback engage-lock();
     callback engage-stealth();
     callback start-snapshot-countdown(int);

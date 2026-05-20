@@ -54,6 +54,14 @@
 import { Bridge, AppState, Panel } from "bridge.slint";
 export { Bridge, AppState, Panel }
 
+// ── Per-feature globals: re-export so slint_build generates Rust bindings ────
+import { AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
+         Casting, Receivers, History, Macros, Quickbar, BitratePresets,
+         Network, Mixer, DebugLog, Camera, Audio } from "state/index.slint";
+export { AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
+         Casting, Receivers, History, Macros, Quickbar, BitratePresets,
+         Network, Mixer, DebugLog, Camera, Audio }
+
 // ── Page component imports ────────────────────────────────────────────────────
 import { ConnectView }                   from "pages/connect_page.slint";
 import { ConnectingView }               from "pages/connecting_page.slint";

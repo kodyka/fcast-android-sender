@@ -1,0 +1,14 @@
+// state/history.slint — Cast history global.
+
+import { CastHistoryEntry } from "../bridge.slint";
+
+export global History {
+    in property <[CastHistoryEntry]> entries: [];
+    in-out property <string>         selected-id: "";
+    in property <CastHistoryEntry>   selected-entry;
+
+    callback open-detail(entry-id: string);
+    callback clear();
+    callback delete(entry-id: string);
+    callback recast(entry-id: string);
+}

@@ -1,0 +1,29 @@
+// state/media_backend.slint — Media backend selector global.
+
+import { MediaBackendKind, MediaBackendState } from "../bridge.slint";
+
+export global MediaBackend {
+    // ── Pure state (Rust → Slint) ────────────────────────────────────
+    in property <MediaBackendState> state:        MediaBackendState.disconnected;
+    in property <string>            status-text:  "";
+    in property <string>            error-text:   "";
+
+    // ── Settings (Slint → Rust on apply) ────────────────────────────
+    in-out property <MediaBackendKind> kind:              MediaBackendKind.migration;
+    in-out property <string>           gstpop-url:        "ws://127.0.0.1:9000";
+    in-out property <string>           gstpop-api-key:    "";
+    in-out property <string>           gstpop-pipeline-id: "0";
+    // gst-pop service control
+    in-out property <string>           gstpop-service-state: "stopped";
+    in-out property <bool>             gstpop-service-externally-owned: false;
+
+    // ── Commands (Slint → Rust) ──────────────────────────────────────
+    callback save-settings();
+    callback probe();
+    callback apply();
+    callback start-gstpop-service();
+    callback stop-gstpop-service();
+    callback start-migration-server(string);
+    callback run-migration-test(string);
+    callback stop-migration-server();
+}
