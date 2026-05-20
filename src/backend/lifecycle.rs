@@ -74,21 +74,124 @@ impl BackendLifecycle {
             });
         });
 
+        // ── Start / Stop service ──────────────────────────────────────────────
+        let start_weak = ui.as_weak();
+        bridge.on_start_gstpop_service(move || {
+            let config = read_config_from_bridge(&start_weak);
+            let weak = start_weak.clone();
+            tokio::spawn(async move {
+                push_state(&weak, crate::MediaBackendState::Starting);
+                if let Err(err) = super::gstpop::service::request_service_start(&config) {
+                    push_error(&weak, &format!("service start failed: {err}"));
+                }
+            });
+        });
+
+        let stop_weak = ui.as_weak();
+        bridge.on_stop_gstpop_service(move || {
+            super::gstpop::service::request_service_stop();
+            let weak = stop_weak.clone();
+            let _ = weak.upgrade_in_event_loop(move |ui| {
+                let bridge = ui.global::<crate::Bridge>();
+                bridge.set_gstpop_service_state("stopping".into());
+            });
+        });
+
+        // ── 1Hz daemon status poller ──────────────────────────────────────────
+        let poll_weak = ui.as_weak();
+        tokio::spawn(async move {
+            let mut ticker =
+                tokio::time::interval(std::time::Duration::from_millis(1000));
+            loop {
+                ticker.tick().await;
+                let status = super::gstpop::embedded::embedded_status();
+                let state_str: &'static str = match status.state {
+                    super::gstpop::embedded::EmbeddedState::Stopped => "stopped",
+                    super::gstpop::embedded::EmbeddedState::Starting => "starting",
+                    super::gstpop::embedded::EmbeddedState::Running => "running",
+                    super::gstpop::embedded::EmbeddedState::Error => "error",
+                };
+                let externally = status.externally_owned;
+                let _ = poll_weak.upgrade_in_event_loop(move |ui| {
+                    let b = ui.global::<crate::Bridge>();
+                    if b.get_active_panel() != crate::Panel::MediaBackend {
+                        return;
+                    }
+                    b.set_gstpop_service_state(state_str.into());
+                    b.set_gstpop_service_externally_owned(externally);
+                });
+            }
+        });
+
         Arc::clone(&self).autostart(ui.as_weak());
     }
 
     fn autostart(self: Arc<Self>, weak: Weak<MainWindow>) {
-        push_state(&weak, crate::MediaBackendState::Probing);
+        use super::gstpop::{embedded, service};
+
+        if self.initial_config.kind == BackendKind::GstPop
+            && embedded::is_localhost(&self.initial_config.gstpop_url)
+        {
+            if let Err(err) = service::request_service_start(&self.initial_config) {
+                tracing::error!(?err, "autostart: request_service_start failed");
+            }
+            push_state(&weak, crate::MediaBackendState::Starting);
+        } else {
+            push_state(&weak, crate::MediaBackendState::Probing);
+        }
+
         tokio::spawn(async move {
-            match current().probe().await {
-                Ok(status) => push_status(&weak, status),
-                Err(err) => push_error(&weak, &err.to_string()),
+            for attempt in 0..25 {
+                match current().probe().await {
+                    Ok(status) => {
+                        push_status(&weak, status);
+                        return;
+                    }
+                    Err(err) if attempt < 24 => {
+                        tracing::debug!(?err, attempt, "autostart probe retry");
+                        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                    }
+                    Err(err) => {
+                        push_error(&weak, &err.to_string());
+                        return;
+                    }
+                }
             }
         });
     }
 
     async fn apply(&self, config: StoredBackendConfig, weak: Weak<MainWindow>) -> Result<()> {
+        use super::gstpop::{embedded, service};
+
+        let previous = current();
+
+        // Persist first so a crash before service start still recovers cleanly.
         config.save(&self.files_dir)?;
+
+        // Service-lifecycle side effects (no-ops on non-Android).
+        match config.kind {
+            BackendKind::GstPop if embedded::is_localhost(&config.gstpop_url) => {
+                push_state(&weak, crate::MediaBackendState::Starting);
+                if let Err(err) = service::request_service_start(&config) {
+                    tracing::error!(?err, "request_service_start failed");
+                    push_error(&weak, &format!("service start failed: {err}"));
+                }
+            }
+            BackendKind::GstPop => {
+                service::request_service_stop();
+            }
+            BackendKind::Migration => {
+                service::request_service_stop();
+            }
+        }
+
+        // Shut down the outgoing backend before installing the new one.
+        if previous.kind() != config.kind {
+            if let Err(err) = previous.shutdown().await {
+                tracing::warn!(?err, "previous backend shutdown failed");
+            }
+        }
+
         install(build_backend(&config));
         push_state(&weak, crate::MediaBackendState::Probing);
         match current().probe().await {

@@ -54,6 +54,7 @@ export enum MediaBackendKind {
 
 export enum MediaBackendState {
     disconnected,
+    starting,    // service-start requested, daemon not yet listening
     probing,
     ready,
     error,
@@ -319,6 +320,13 @@ export global Bridge {
     callback save-media-backend-settings();
     callback probe-media-backend();
     callback apply-media-backend();
+
+    // NEW — explicit service control (gst-pop only).
+    callback start-gstpop-service();
+    callback stop-gstpop-service();
+    // Driven by Rust 1Hz poller while the Media Backend panel is visible.
+    in-out property <string> gstpop-service-state: "stopped"; // "stopped"|"starting"|"running"|"error"
+    in-out property <bool>   gstpop-service-externally-owned: false;
 
     // ── Mixer screen (MVP-PHASE-11) ──────────────────────────────────────
     in-out property <SrtSource> srt-source-a: {

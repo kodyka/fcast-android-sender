@@ -1,7 +1,8 @@
 pub mod backend;
 pub mod client;
-mod embedded;
+pub mod embedded;
 pub mod protocol;
+pub mod service;
 #[cfg(test)]
 mod protocol_tests;
 

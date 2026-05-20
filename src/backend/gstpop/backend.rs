@@ -60,16 +60,12 @@ impl MediaBackend for GstPopBackend {
     }
 
     async fn probe(&self) -> Result<BackendStatus> {
-        if super::embedded::is_localhost(&self.url) {
-            super::embedded::ensure_started(super::embedded::url_port(&self.url))
-                .await
-                .context("start embedded gst-pop")?;
-        }
-
+        // Probe is connectivity-only. Daemon lifetime is owned by
+        // GstPopService (Android) or by the user (CI / dev machine).
         let info = self
             .raw_call("get_version", json!({}))
             .await
-            .context("probe: get_version")?;
+            .context("probe: get_version (is the gst-pop service running?)")?;
         let version = info
             .get("version")
             .and_then(Value::as_str)
