@@ -115,8 +115,8 @@ export component RecordingPage inherits Rectangle {
                             height: 96px;
                             border-radius: 48px;
                             background:
-                                Bridge.recording-state == RecordingState.idle      ? #cc0000
-                                : Bridge.recording-state == RecordingState.recording ? #cc0000
+                                Bridge.recording-state == RecordingState.idle      ? Theme.recording-dot
+                                : Bridge.recording-state == RecordingState.recording ? Theme.recording-dot
                                 : Bridge.recording-state == RecordingState.paused    ? Theme.accent-active
                                 : Theme.surface-primary;
                             // Inner glyph: red dot (idle), white square (recording),
