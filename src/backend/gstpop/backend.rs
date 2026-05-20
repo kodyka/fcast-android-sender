@@ -197,4 +197,54 @@ mod tests {
         let value = backend.raw_call("get_version", json!({})).await.unwrap();
         assert_eq!(value["version"], "test-0.0");
     }
+
+    /// probe() against a real mock WS server returns the correct status text
+    /// and does NOT attempt to start any embedded daemon.
+    #[tokio::test]
+    async fn probe_returns_version_and_pipeline_count_from_mock_server() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut ws = accept_async(stream).await.unwrap();
+            while let Some(msg) = ws.next().await {
+                if let Ok(Message::Text(text)) = msg {
+                    let req: Value = serde_json::from_str(text.as_str()).unwrap();
+                    let id = req["id"].as_str().unwrap().to_owned();
+                    let method = req["method"].as_str().unwrap_or("");
+                    let result = match method {
+                        "get_version"        => json!({ "version": "0.4.3" }),
+                        "get_pipeline_count" => json!({ "count": 2 }),
+                        _                    => json!({}),
+                    };
+                    let reply = json!({ "id": id, "result": result });
+                    let _ = ws.send(Message::Text(reply.to_string().into())).await;
+                }
+            }
+        });
+
+        let backend = GstPopBackend::new(format!("ws://127.0.0.1:{port}"), None, "0".into());
+        let status = backend.probe().await.expect("probe should succeed");
+        assert_eq!(status.status_text, "gst-pop 0.4.3 - 2 pipeline(s)");
+        assert!(status.error_text.is_empty());
+    }
+
+    /// probe() against a port with nothing listening fails with a clear error —
+    /// it no longer silently starts an embedded daemon.
+    #[tokio::test]
+    async fn probe_fails_cleanly_when_nothing_is_listening() {
+        // Bind and immediately drop so the port is definitely closed.
+        let port = {
+            let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            l.local_addr().unwrap().port()
+        };
+        let backend = GstPopBackend::new(format!("ws://127.0.0.1:{port}"), None, "0".into());
+        let err = backend.probe().await.unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("get_version") || msg.contains("connect"),
+            "unexpected error: {msg}"
+        );
+    }
 }

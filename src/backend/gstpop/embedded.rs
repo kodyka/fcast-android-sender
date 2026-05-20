@@ -237,30 +237,50 @@ mod tests {
         l.local_addr().unwrap().port()
     }
 
+    /// Hard-reset all process-global state between tests.
+    fn reset() {
+        CLAIMED.store(false, Ordering::SeqCst);
+        READY.store(false, Ordering::SeqCst);
+        HANDLE.lock().take();
+        let mut st = STATE.write();
+        st.state = EmbeddedState::Stopped;
+        st.externally_owned = false;
+        st.bind = String::new();
+        st.port = 0;
+        st.last_error = None;
+        st.started_at_unix_ms = None;
+    }
+
     #[tokio::test]
     #[ignore = "uses process-global state; run with --test-threads=1 --ignored"]
     async fn start_then_stop_is_idempotent() {
+        reset();
         let port = pick_free_port();
         let a = start_embedded(port).await;
-        assert!(matches!(a.state, EmbeddedState::Running));
+        assert!(matches!(a.state, EmbeddedState::Running), "expected Running, got {:?}", a.state);
         assert!(!a.externally_owned);
         let b = start_embedded(port).await;
         assert!(matches!(b.state, EmbeddedState::Running));
         let c = stop_embedded().await;
-        assert!(matches!(c.state, EmbeddedState::Stopped));
+        assert!(matches!(c.state, EmbeddedState::Stopped), "expected Stopped, got {:?}", c.state);
     }
 
     #[tokio::test]
     #[ignore = "uses process-global state; run with --test-threads=1 --ignored"]
     async fn external_listener_is_adopted_and_not_killed() {
+        reset();
         let port = pick_free_port();
-        let _listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await.unwrap();
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await.unwrap();
         let a = start_embedded(port).await;
         assert!(matches!(a.state, EmbeddedState::Running));
         assert!(a.externally_owned);
+        // Dropping the listener before stop means the port is gone — stop is still no-op
+        // because we track ownership via the flag, not by re-probing.
+        drop(listener);
         let b = stop_embedded().await;
-        // External listener still alive — no-op stop.
-        assert!(matches!(b.state, EmbeddedState::Running));
+        assert!(matches!(b.state, EmbeddedState::Running), "externally_owned: stop should be no-op");
         assert!(b.externally_owned);
+        // Clean up so subsequent tests start fresh.
+        reset();
     }
 }
