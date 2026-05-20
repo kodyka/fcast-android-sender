@@ -24,6 +24,21 @@ pub async fn ensure_started(port: u16) -> Result<()> {
         return Ok(());
     }
 
+    // If something is already listening on the port (a manually-started
+    // gst-pop daemon, the CI smoke-test daemon running in Docker, etc.),
+    // there is no point starting a second embedded server on top of it —
+    // the bind would just fail with EADDRINUSE. Treat the existing
+    // listener as our gst-pop and mark the slot claimed/ready.
+    if probe_port_open(port).await {
+        CLAIMED.store(true, Ordering::Release);
+        READY.store(true, Ordering::Release);
+        tracing::info!(
+            "External gst-pop server already listening on 127.0.0.1:{port}; \
+             skipping embedded startup"
+        );
+        return Ok(());
+    }
+
     // Race to be the one that starts the server. Only one caller wins.
     if CLAIMED.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).is_ok() {
         // We won — start the server.
@@ -44,6 +59,17 @@ pub async fn ensure_started(port: u16) -> Result<()> {
         // We lost the race — wait for the winner to finish binding the port.
         wait_for_port(port).await
     }
+}
+
+/// Quick TCP-connect probe: returns true if `127.0.0.1:port` accepts a
+/// connection within ~200ms.
+async fn probe_port_open(port: u16) -> bool {
+    let addr = format!("127.0.0.1:{port}");
+    let connect = tokio::net::TcpStream::connect(&addr);
+    matches!(
+        tokio::time::timeout(std::time::Duration::from_millis(200), connect).await,
+        Ok(Ok(_))
+    )
 }
 
 async fn start_server(port: u16) -> Result<ServerHandle> {
