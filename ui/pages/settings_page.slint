@@ -10,12 +10,13 @@
 // Shared settings widgets are vendored locally from the monorepo's mcore UI.
 
 // Phase 7 adds FullSettingsPage in this same file.  It is a UI-only panel
-// reachable from `Bridge.active-panel == Panel.settings`.  All controls
+// reachable from `PanelBridge.active == Panel.settings`.  All controls
 // flip inline `in-out` properties on the page itself — no Rust round-trip.
 
 import { VerticalBox, ScrollView } from "std-widgets.slint";
 import { Utils, VideoResolutionPicker, FrameratePicker } from "../components/mcore/common.slint";
 import { Bridge, Panel, LifecycleMode, MediaBackendKind } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, DestructiveButton, TextButton } from "../components/buttons.slint";
 import {
@@ -23,6 +24,7 @@ import {
     SettingsValueRow,
     SettingsToggleRow,
 } from "../components/settings_rows.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 export component SettingsPageView inherits Rectangle {
     property <int> video-resolution-idx: 2;
@@ -79,23 +81,9 @@ export component FullSettingsPage inherits Rectangle {
 
     VerticalLayout {
         // ── Header ────────────────────────────────────────────────────────
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Settings");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Settings");
+            close-clicked => { PanelBridge.pop(); }
         }
 
         // ── Body (scrollable) ─────────────────────────────────────────────
@@ -133,7 +121,7 @@ export component FullSettingsPage inherits Rectangle {
                     title: @tr("RECEIVER");
                     SettingsValueRow {
                         title: @tr("Discovered receivers");
-                        value: @tr("{n} receiver found" | "{n} receivers found" % 3);
+                        value: @tr("{n} receiver found" | "{n} receivers found" % Bridge.devices.length);
                         // UI-only — would open the connect page.
                         clicked => { /* placeholder */ }
                     }
@@ -152,17 +140,17 @@ export component FullSettingsPage inherits Rectangle {
                     SettingsValueRow {
                         title: @tr("Audio");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.audio; }
+                        clicked => { PanelBridge.push(Panel.audio); }
                     }
                     SettingsValueRow {
                         title: @tr("Bitrate");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.bitrate-presets; }
+                        clicked => { PanelBridge.push(Panel.bitrate-presets); }
                     }
                     SettingsValueRow {
                         title: @tr("Camera");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.camera; }
+                        clicked => { PanelBridge.push(Panel.camera); }
                     }
                     SettingsValueRow {
                         title: @tr("Max resolution");
@@ -186,7 +174,7 @@ export component FullSettingsPage inherits Rectangle {
                     SettingsValueRow {
                         title: @tr("Quick actions");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.quick-actions; }
+                        clicked => { PanelBridge.push(Panel.quick-actions); }
                     }
                 }
 
@@ -196,24 +184,24 @@ export component FullSettingsPage inherits Rectangle {
                     SettingsValueRow {
                         title: @tr("H.264 encoder test");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.codec-test; }
+                        clicked => { PanelBridge.push(Panel.codec-test); }
                     }
                     SettingsValueRow {
                         title: @tr("Debug log");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.debug-log; }
+                        clicked => { PanelBridge.push(Panel.debug-log); }
                     }
                     SettingsValueRow {
                         title: @tr("Video pipeline");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.debug-video; }
+                        clicked => { PanelBridge.push(Panel.debug-video); }
                     }
                     SettingsValueRow {
                         title: @tr("Media backend");
                         value: Bridge.media-backend == MediaBackendKind.migration
                             ? @tr("Migration (in-process)")
                             : @tr("gst-pop ({})", Bridge.gstpop-url);
-                        clicked => { Bridge.active-panel = Panel.media-backend; }
+                        clicked => { PanelBridge.push(Panel.media-backend); }
                     }
                 }
 
@@ -223,12 +211,12 @@ export component FullSettingsPage inherits Rectangle {
                     SettingsValueRow {
                         title: @tr("Backup & reset");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.backup-reset; }
+                        clicked => { PanelBridge.push(Panel.backup-reset); }
                     }
                     SettingsValueRow {
                         title: @tr("Cast history");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.cast-history; }
+                        clicked => { PanelBridge.push(Panel.cast-history); }
                     }
                 }
 
@@ -238,17 +226,17 @@ export component FullSettingsPage inherits Rectangle {
                     SettingsValueRow {
                         title: @tr("Recording");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.recording; }
+                        clicked => { PanelBridge.push(Panel.recording); }
                     }
                     SettingsValueRow {
                         title: @tr("Network");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.network; }
+                        clicked => { PanelBridge.push(Panel.network); }
                     }
                     SettingsValueRow {
                         title: @tr("Mixer");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.mixer; }
+                        clicked => { PanelBridge.push(Panel.mixer); }
                     }
                 }
 
@@ -258,7 +246,7 @@ export component FullSettingsPage inherits Rectangle {
                     SettingsValueRow {
                         title: @tr("Macros");
                         value: @tr("open-panel-action" => "Open");
-                        clicked => { Bridge.active-panel = Panel.macros; }
+                        clicked => { PanelBridge.push(Panel.macros); }
                     }
                 }
 

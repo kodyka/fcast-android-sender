@@ -34,62 +34,81 @@ export component ConfirmDialog inherits Rectangle {
 
     width: 100%;
     height: 100%;
-    background: #00000080;     // 50% opaque scrim — TODO Theme.scrim later
+    background: Theme.scrim-strong;
 
-    // Outer scrim TouchArea: tapping outside the dialog dismisses.
-    TouchArea {
-        clicked => { root.dismissed(); }
-    }
+    accessible-role:  text;
+    accessible-label: root.title + ". " + root.body;
 
-    // ── Centered card ────────────────────────────────────────────────────
-    card-content := Rectangle {
-        width: 320px;
-        height: card-layout.preferred-height;
-        background: Theme.surface-card;
-        border-radius: Theme.radius-card;
-        x: (parent.width  - self.width)  / 2;
-        y: (parent.height - self.height) / 2;
-
-        // Inner TouchArea swallows clicks so they don't bubble to the
-        // scrim and dismiss the dialog.
-        TouchArea {
-            // No clicked => — just absorbs.
+    // Trap focus while the dialog is up; Escape dismisses, Enter confirms.
+    forward-focus: dialog-scope;
+    dialog-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                root.dismissed();
+                return accept;
+            }
+            if event.text == "\n" {
+                root.confirmed();
+                return accept;
+            }
+            return reject;
         }
 
-        card-layout := VerticalLayout {
-            padding: Theme.padding-screen;
-            spacing: Theme.spacing-default;
+        // Outer scrim TouchArea: tapping outside the dialog dismisses.
+        TouchArea {
+            clicked => { root.dismissed(); }
+        }
 
-            Text {
-                text: root.title;
-                font-size: Theme.font-size-heading;
-                color: Theme.text-primary;
+        // ── Centered card ────────────────────────────────────────────────────
+        card-content := Rectangle {
+            width: 320px;
+            height: card-layout.preferred-height;
+            background: Theme.surface-card;
+            border-radius: Theme.radius-card;
+            x: (parent.width  - self.width)  / 2;
+            y: (parent.height - self.height) / 2;
+
+            // Inner TouchArea swallows clicks so they don't bubble to the
+            // scrim and dismiss the dialog.
+            TouchArea {
+                // No clicked => — just absorbs.
             }
 
-            Text {
-                text: root.body;
-                font-size: Theme.font-size-body;
-                color: Theme.text-secondary;
-                wrap: word-wrap;
-            }
+            card-layout := VerticalLayout {
+                padding: Theme.padding-screen;
+                spacing: Theme.spacing-default;
 
-            HorizontalLayout {
-                spacing: 8px;
-                alignment: end;
-
-                TextButton {
-                    label: @tr("dismiss-dialog-button" => "Cancel");
-                    clicked => { root.dismissed(); }
+                Text {
+                    text: root.title;
+                    font-size: Theme.font-size-heading;
+                    color: Theme.text-primary;
                 }
 
-                if root.destructive: DestructiveButton {
-                    label: root.confirm-label;
-                    clicked => { root.confirmed(); }
+                Text {
+                    text: root.body;
+                    font-size: Theme.font-size-body;
+                    color: Theme.text-secondary;
+                    wrap: word-wrap;
                 }
 
-                if !root.destructive: PrimaryButton {
-                    label: root.confirm-label;
-                    clicked => { root.confirmed(); }
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: end;
+
+                    TextButton {
+                        label: @tr("dismiss-dialog-button" => "Cancel");
+                        clicked => { root.dismissed(); }
+                    }
+
+                    if root.destructive: DestructiveButton {
+                        label: root.confirm-label;
+                        clicked => { root.confirmed(); }
+                    }
+
+                    if !root.destructive: PrimaryButton {
+                        label: root.confirm-label;
+                        clicked => { root.confirmed(); }
+                    }
                 }
             }
         }

@@ -1,16 +1,16 @@
 import { Theme } from "../theme.slint";
-import { Bridge, LifecycleMode } from "../bridge.slint";
+import { Bridge } from "../bridge.slint";
 
 export component StealthOverlay inherits Rectangle {
     width: 100%;
     height: 100%;
-    background: #000000;
+    background: Theme.surface-black;
 
     TouchArea {
         width: 100%;
         height: 100%;
         clicked => {
-            Bridge.lifecycle = LifecycleMode.normal;
+            Bridge.exit-lifecycle();
         }
 
         VerticalLayout {

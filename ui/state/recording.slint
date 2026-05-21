@@ -1,0 +1,17 @@
+// state/recording.slint — Recording concern global.
+// Owns all recording state and commands.
+// Rust binds via ui.global::<Recording>().
+
+import { RecordingState } from "../bridge.slint";
+
+export global Recording {
+    // ── State (Rust → Slint) ─────────────────────────────────────────
+    in property <RecordingState> state:     RecordingState.idle;
+    in property <int>            elapsed-s: 0;
+
+    // ── Commands (Slint → Rust) ──────────────────────────────────────
+    callback start();
+    callback pause();
+    callback resume();
+    callback stop();
+}

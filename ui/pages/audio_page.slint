@@ -1,32 +1,30 @@
 import { ScrollView } from "std-widgets.slint";
 import { Theme } from "../theme.slint";
 import { Bridge, Panel } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { TextButton } from "../components/buttons.slint";
 import {
     SettingsSection, SettingsToggleRow, SettingsValueRow, SettingsSliderRow
 } from "../components/settings_rows.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 export component AudioPage inherits Rectangle {
     width: 100%;
     height: 100%;
     background: Theme.surface-primary;
 
+    forward-focus: panel-scope;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape { PanelBridge.pop(); return accept; }
+            return reject;
+        }
+
     VerticalLayout {
         // Header
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Audio");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton { label: @tr("close-panel-button" => "Done"); clicked => { Bridge.active-panel = Panel.none; } }
-            }
+        PanelHeader {
+            title: @tr("Audio");
+            close-clicked => { PanelBridge.pop(); }
         }
 
         ScrollView {
@@ -72,4 +70,5 @@ export component AudioPage inherits Rectangle {
             }
         }
     }
+    }   // end FocusScope
 }

@@ -12,8 +12,10 @@
 
 import { ListView } from "std-widgets.slint";
 import { Bridge, Panel, LogLevel, LogEntry } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 // Filter chip — local state lives on the page root (mock-min-level-idx),
 // so the chip itself is stateless and only emits clicked.
@@ -60,11 +62,11 @@ export component DebugLogPage inherits Rectangle {
     }
 
     pure function level-color(level: LogLevel) -> color {
-        return level == LogLevel.trace   ? #888888 :
-               level == LogLevel.debug   ? #4080ff :
-               level == LogLevel.info    ? #20a020 :
-               level == LogLevel.warning ? #f0a020 :
-                                            #e02020;   // error
+        return level == LogLevel.trace   ? Theme.log-trace   :
+               level == LogLevel.debug   ? Theme.log-debug   :
+               level == LogLevel.info    ? Theme.log-info    :
+               level == LogLevel.warning ? Theme.log-warning :
+                                            Theme.log-error;
     }
 
     pure function level-name(level: LogLevel) -> string {
@@ -77,23 +79,9 @@ export component DebugLogPage inherits Rectangle {
 
     VerticalLayout {
         // ── Header ──────────────────────────────────────────────────────
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Debug log");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Debug log");
+            close-clicked => { PanelBridge.pop(); }
         }
 
         // ── Filter chip bar ─────────────────────────────────────────────

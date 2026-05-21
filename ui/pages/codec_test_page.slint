@@ -1,7 +1,7 @@
 // codec_test_page.slint — H.264 encoder smoke-test panel (UI-only placeholder).
 //
 // Reachable from FullSettingsPage's "H.264 encoder test" row, which sets
-// `Bridge.active-panel = Panel.codec-test`.  The "Run encoder test" button
+// `PanelBridge.push(Panel.codec-test)`.  The "Run encoder test" button
 // is a no-op in this phase; Phase 8 wires it to a Rust handler that exercises
 // MediaCodec.
 //
@@ -11,8 +11,10 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, TextButton } from "../components/buttons.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 export component CodecTestPage inherits Rectangle {
     // UI-only stub state.
@@ -32,23 +34,9 @@ export component CodecTestPage inherits Rectangle {
 
     VerticalLayout {
         // ── Header ────────────────────────────────────────────────────────
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Codec test");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Codec test");
+            close-clicked => { PanelBridge.pop(); }
         }
 
         // ── Body ──────────────────────────────────────────────────────────

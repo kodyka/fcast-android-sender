@@ -47,7 +47,7 @@ Document a one-command per-page preview:
 
 ```bash
 # Install once
-cargo install slint-viewer --version "=1.15.1"
+cargo install slint-viewer --version "=1.16.0"
 
 # Preview the whole app (mounts MainWindow)
 slint-viewer ui/main.slint
@@ -120,7 +120,7 @@ jobs:
 
       - name: Translations stay in sync
         run: |
-          cargo install slint-tr-extractor --version "=1.15.1" --quiet
+          cargo install slint-tr-extractor --version "=1.16.0" --quiet
           slint-tr-extractor ui/main.slint -o /tmp/messages.pot
           # Compare modulo header lines (date / version metadata).
           diff <(sed -E '/^"(POT-Creation-Date|Project-Id-Version)/d' /tmp/messages.pot) \
@@ -213,7 +213,7 @@ relevant `Cargo.toml`:
 
 ```toml
 [dev-dependencies]
-i-slint-backend-testing = { version = "1.15.1" }
+i-slint-backend-testing = { version = "1.16.0" }
 ```
 
 Pin to the Slint version. The backend is headless and works in CI

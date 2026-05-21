@@ -1,0 +1,17 @@
+// state/panel_bridge.slint — Panel routing & back-stack global.
+// push/pop/replace/close-all are callbacks wired to Rust (step 11).
+// Slint pages call PanelBridge.push(Panel.X) instead of writing
+// Bridge.active-panel directly.
+
+import { Panel } from "../bridge.slint";
+
+export global PanelBridge {
+    in-out property <Panel>    active: Panel.none;
+    in property <[Panel]> stack: [];
+
+    // ── Navigation callbacks (Slint → Rust, wired in step 11) ───────
+    callback push(p: Panel);
+    callback pop();
+    callback replace(p: Panel);
+    callback close-all();
+}

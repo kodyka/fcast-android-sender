@@ -48,12 +48,13 @@ export component PairingPage inherits Rectangle {
         // Spacer
         Rectangle { height: 16px; }
 
-        // QR card — centred.
+        // QR card — centred and responsive.
         HorizontalLayout {
             alignment: center;
 
             QrPlaceholder {
                 label: @tr("(QR preview)");
+                width: Math.max(Theme.qr-square-min, Math.min(root.width * 0.8, Theme.qr-square-max));
             }
         }
 

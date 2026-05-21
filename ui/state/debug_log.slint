@@ -1,0 +1,11 @@
+// state/debug_log.slint — Debug log and test-status state.
+
+import { LogEntry } from "../bridge.slint";
+
+export global DebugLog {
+    in property <[LogEntry]> entries: [];
+    in-out property <bool>   show-debug:  false;
+    in-out property <string> test-status: "";
+
+    callback clear();
+}

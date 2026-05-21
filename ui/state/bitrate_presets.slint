@@ -1,0 +1,12 @@
+// state/bitrate_presets.slint — Bitrate preset management.
+
+import { BitratePreset } from "../bridge.slint";
+
+export global BitratePresets {
+    in property <[BitratePreset]> presets: [];
+    in-out property <string>      selected-id: "";
+
+    callback save(id: string, name: string, kbps: int);
+    callback delete(id: string);
+    callback set-active(id: string);
+}

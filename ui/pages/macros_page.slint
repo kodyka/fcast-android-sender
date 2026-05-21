@@ -12,8 +12,10 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel, Macro, MacroStep } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton, PrimaryButton } from "../components/buttons.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 export component MacrosPage inherits Rectangle {
     width: 100%;
@@ -21,23 +23,9 @@ export component MacrosPage inherits Rectangle {
     background: Theme.surface-primary;
 
     VerticalLayout {
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Macros");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Macros");
+            close-clicked => { PanelBridge.pop(); }
         }
 
         ScrollView {
@@ -75,7 +63,7 @@ export component MacrosPage inherits Rectangle {
                         clicked => {
                             Bridge.macro-edit-id = macro.id;
                             Bridge.load-draft-macro(macro.id);
-                            Bridge.active-panel = Panel.macro-edit;
+                            PanelBridge.push(Panel.macro-edit);
                         }
                     }
 
@@ -141,7 +129,7 @@ export component MacrosPage inherits Rectangle {
                     clicked => {
                         Bridge.macro-edit-id = "";
                         Bridge.load-draft-macro("");
-                        Bridge.active-panel = Panel.macro-edit;
+                        PanelBridge.push(Panel.macro-edit);
                     }
                 }
             }

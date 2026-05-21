@@ -1,7 +1,7 @@
 // cast_history_page.slint — Past cast sessions list (UI-only).
 //
 // Reachable from FullSettingsPage's "Cast history" row in DATA.
-// Tap a row → set Bridge.selected-history-id, open Panel.cast-history-detail.
+// Tap a row → call Bridge.open-history-detail(id), open Panel.cast-history-detail.
 // "Clear all" → ConfirmDialog (Phase 19) → empty mock-history on confirm.
 //
 // Slint docs ref:
@@ -11,9 +11,11 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel, CastHistoryEntry } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import { ConfirmDialog } from "../components/confirm_dialog.slint";
+import { PanelHeaderActions } from "../components/panel_chrome.slint";
 
 export component CastHistoryPage inherits Rectangle {
     in-out property <bool> show-clear-confirm: false;
@@ -40,37 +42,22 @@ export component CastHistoryPage inherits Rectangle {
     // colour names are illustrative; substitute Theme.* tokens once
     // the design system has dedicated success/warning/error colours.
     pure function status-color(status: string) -> color {
-        return status == "Completed" ? #2e7d32  :   // green
-               status == "Cancelled" ? #ed6c02  :   // amber
-               status == "Failed"    ? #c62828  :   // red
+        return status == "Completed" ? Theme.success  :
+               status == "Cancelled" ? Theme.warning  :
+               status == "Failed"    ? Theme.error    :
                                         Theme.surface-card.brighter(20%);
     }
 
     VerticalLayout {
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                spacing: Theme.spacing-default;
-
-                Text {
-                    text: @tr("Cast history");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-
-                TextButton {
-                    label: @tr("Clear all");
-                    clicked => { root.show-clear-confirm = true; }
-                }
-
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
+        PanelHeaderActions {
+            title: @tr("Cast history");
+            TextButton {
+                label: @tr("Clear all");
+                clicked => { root.show-clear-confirm = true; }
+            }
+            TextButton {
+                label: @tr("close-panel-button" => "Done");
+                clicked => { PanelBridge.pop(); }
             }
         }
 
@@ -102,8 +89,8 @@ export component CastHistoryPage inherits Rectangle {
 
                     row-ta := TouchArea {
                         clicked => {
-                            Bridge.selected-history-id = entry.id;
-                            Bridge.active-panel = Panel.cast-history-detail;
+                            Bridge.open-history-detail(entry.id);
+                            PanelBridge.push(Panel.cast-history-detail);
                         }
                     }
 
@@ -153,7 +140,7 @@ export component CastHistoryPage inherits Rectangle {
                             text: "›";
                             color: Theme.text-secondary;
                             vertical-alignment: center;
-                            font-size: 20px;
+                            font-size: Theme.font-size-cell;
                         }
                     }
                 }

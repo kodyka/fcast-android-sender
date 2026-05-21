@@ -13,16 +13,36 @@ export component PrimaryButton inherits Rectangle {
 
     height: Theme.row-height;
     border-radius: Theme.radius-card;
-    background: ta.pressed ? Theme.accent-pressed : Theme.accent;
+    background: scope.has-focus ? Theme.accent-active
+              : ta.pressed       ? Theme.accent-pressed
+              :                    Theme.accent;
     opacity: root.enabled ? 1.0 : 0.45;
+    border-width: scope.has-focus ? 2px : 0px;
+    border-color: Theme.accent-active;
+    animate border-width { duration: 80ms; }
 
+    accessible-role:          button;
+    accessible-label:         root.label;
+    accessible-enabled:       root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if event.text == "\n" || event.text == " " {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
     ta := TouchArea {
         enabled: root.enabled;
         clicked => { root.clicked(); }
     }
     Text {
         text: root.label;
-        color: Theme.text-primary;
+        color: Theme.text-on-accent;
         horizontal-alignment: center;
         vertical-alignment: center;
         font-size: Theme.font-size-body;
@@ -38,7 +58,26 @@ export component TextButton inherits Rectangle {
     height: Theme.row-height;
     background: transparent;
     opacity: root.enabled ? 1.0 : 0.45;
+    border-radius: 4px;
+    border-width: scope.has-focus ? 2px : 0px;
+    border-color: Theme.accent;
+    animate border-width { duration: 80ms; }
 
+    accessible-role:          button;
+    accessible-label:         root.label;
+    accessible-enabled:       root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if event.text == "\n" || event.text == " " {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
     ta := TouchArea {
         enabled: root.enabled;
         clicked => { root.clicked(); }
@@ -61,14 +100,32 @@ export component DestructiveButton inherits Rectangle {
     border-radius: Theme.radius-card;
     background: ta.pressed ? Theme.error.darker(20%) : Theme.error;
     opacity: root.enabled ? 1.0 : 0.45;
+    border-width: scope.has-focus ? 2px : 0px;
+    border-color: Theme.error-fg;
+    animate border-width { duration: 80ms; }
 
+    accessible-role:          button;
+    accessible-label:         @tr("destructive-button-a11y-label", "{} (destructive)", root.label);
+    accessible-enabled:       root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if event.text == "\n" || event.text == " " {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
     ta := TouchArea {
         enabled: root.enabled;
         clicked => { root.clicked(); }
     }
     Text {
         text: root.label;
-        color: Theme.text-primary;
+        color: Theme.text-on-error;
         horizontal-alignment: center;
         vertical-alignment: center;
     }

@@ -1,0 +1,10 @@
+// state/casting.slint — Casting state and commands.
+
+import { StatusItem } from "../bridge.slint";
+
+export global Casting {
+    in property <[StatusItem]> status-items: [];
+
+    callback start(scale-width: int, scale-height: int, max-framerate: int);
+    callback stop();
+}

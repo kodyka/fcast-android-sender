@@ -1,0 +1,28 @@
+// safe_area.slint — Single source-of-truth for platform safe-area insets.
+//
+// MainWindow populates the in-out properties from Window.safe-area-insets in
+// its init callback.  All callers read SafeArea.top/.bottom/.left/.right.
+//
+// The 65 px hard-coded floor that lived in main.slint is gone: min-bottom is
+// 0 px so tablet/landscape devices no longer see unnecessary black banding.
+// Raise min-bottom here (not in the UI shell) if a specific device genuinely
+// needs a non-zero floor.
+
+export global SafeArea {
+    // Raw insets set by MainWindow.init from Window.safe-area-insets.
+    in-out property <length> raw-top:    0px;
+    in-out property <length> raw-bottom: 0px;
+    in-out property <length> raw-left:   0px;
+    in-out property <length> raw-right:  0px;
+
+    // Minimum floor values.  24 px top guards against emulators that report 0.
+    // Bottom is 0: trust the platform (the old 65 px was Pixel-7-specific).
+    in property <length> min-top:    24px;
+    in property <length> min-bottom:  0px;
+
+    // Computed, clamped insets — read these everywhere.
+    out property <length> top:    raw-top    > min-top    ? raw-top    : min-top;
+    out property <length> bottom: raw-bottom > min-bottom ? raw-bottom : min-bottom;
+    out property <length> left:   raw-left;
+    out property <length> right:  raw-right;
+}

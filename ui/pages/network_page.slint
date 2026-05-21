@@ -1,7 +1,7 @@
 // network_page.slint — Network interfaces list + Wi-Fi Aware opt-in (UI-only).
 //
 // Reachable from FullSettingsPage's "Network" row (sets
-// `Bridge.active-panel = Panel.network`). All toggles flip inline state;
+// `PanelBridge.push(Panel.network)`). All toggles flip inline state;
 // no real interface enumeration, no Wi-Fi Aware permission flow. Phase 8
 // will swap mock-interfaces for a Bridge-published list and the Wi-Fi
 // Aware toggle for a real WifiAwareManager opt-in.
@@ -12,13 +12,15 @@
 //   draft/slint-ui/docs/astro/src/content/docs/guide/language/coding/repetition-and-data-models.mdx
 
 import { ScrollView } from "std-widgets.slint";
-import { Bridge, Panel, NetworkInterface } from "../bridge.slint";
+import { Bridge, Panel, NetworkInterface, NetworkKind } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import {
     SettingsSection,
     SettingsToggleRow,
 } from "../components/settings_rows.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 // Internal sub-component — needs its own `expanded: bool` so the page can
 // have multiple rows expanded simultaneously. Cannot live as inline
@@ -57,10 +59,11 @@ component NetworkInterfaceRow inherits Rectangle {
                     background: Theme.accent-active.darker(20%);
                     Text {
                         text:
-                            root.data.kind == "wifi"     ? "W" :
-                            root.data.kind == "ethernet" ? "E" :
-                            root.data.kind == "cellular" ? "M" :
-                                                           "•";
+                            root.data.kind == NetworkKind.wifi     ? "W" :
+                            root.data.kind == NetworkKind.ethernet ? "E" :
+                            root.data.kind == NetworkKind.cellular ? "M" :
+                            root.data.kind == NetworkKind.loopback ? "L" :
+                                                                     "•";
                         color: Theme.text-primary;
                         horizontal-alignment: center;
                         vertical-alignment: center;
@@ -78,7 +81,7 @@ component NetworkInterfaceRow inherits Rectangle {
                     }
                     Text {
                         text: root.data.address-v4 == ""
-                            ? "(no IPv4 address)"
+                            ? @tr("network-no-ipv4", "(no IPv4 address)")
                             : root.data.address-v4;
                         color: Theme.text-secondary;
                         font-size: Theme.font-size-label;
@@ -121,7 +124,12 @@ component NetworkInterfaceRow inherits Rectangle {
                     overflow: elide;
                 }
                 Text {
-                    text: @tr("Kind: {}", root.data.kind);
+                    text: "Kind: " + (
+                        root.data.kind == NetworkKind.wifi     ? "Wi-Fi"    :
+                        root.data.kind == NetworkKind.ethernet ? "Ethernet" :
+                        root.data.kind == NetworkKind.cellular ? "Mobile"   :
+                        root.data.kind == NetworkKind.loopback ? "Loopback" :
+                                                                 "Other");
                     color: Theme.text-secondary;
                     font-size: Theme.font-size-label;
                 }
@@ -145,25 +153,18 @@ export component NetworkPage inherits Rectangle {
     height: 100%;
     background: Theme.surface-primary;
 
+    forward-focus: panel-scope;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape { PanelBridge.pop(); return accept; }
+            return reject;
+        }
+
     VerticalLayout {
         // ── Header ──────────────────────────────────────────────────────
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Network");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Network");
+            close-clicked => { PanelBridge.pop(); }
         }
 
         // ── Body ────────────────────────────────────────────────────────
@@ -204,4 +205,5 @@ export component NetworkPage inherits Rectangle {
             }
         }
     }
+    }   // end FocusScope
 }

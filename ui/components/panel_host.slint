@@ -1,0 +1,36 @@
+// panel_host.slint — Geometry + visibility shell for full-screen overlay panels.
+//
+// Owns:
+//   - safe-area inset math (reads SafeArea global directly)
+//   - "is this panel currently active" visibility gating
+//   - one conditional element per page
+//
+// Does NOT own:
+//   - panel-specific wiring (close / save / cancel) — declared at the call-site
+//     in MainWindow, but inside the host's content area so geometry stays uniform.
+//
+// Slint docs ref:
+//   draft/slint-ui/docs/astro/src/content/docs/guide/language/coding/repetition-and-data-models.mdx
+
+import { Panel } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
+import { SafeArea } from "../state/safe_area.slint";
+
+export component PanelHost inherits Rectangle {
+    background: transparent;
+    width: 100%;
+    height: 100%;
+
+    visible: PanelBridge.active != Panel.none;
+
+    // Inset rect — children stretch to fill this, safe-area math lives here once.
+    Rectangle {
+        x: 0;
+        y: SafeArea.top;
+        width: parent.width;
+        height: parent.height - SafeArea.top - SafeArea.bottom;
+        background: transparent;
+
+        @children
+    }
+}

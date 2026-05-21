@@ -10,38 +10,48 @@
 
 import { Theme } from "../theme.slint";
 
+// QR module colors are intentionally black-on-white (payload colors,
+// not theme overrides). Exposed as tokens so inverted or paper-cut
+// variants can swap them without touching Theme.
+export global QrTokens {
+    out property <color> module-dark:  #000;
+    out property <color> module-light: #fff;
+}
+
 // Alignment square — the 7-module-wide nested square pattern at
 // three corners of every QR code.
 component AlignmentSquare inherits Rectangle {
     in property <length> size: 42px;
     width:  root.size;
     height: root.size;
-    background: #000;
+    background: QrTokens.module-dark;
     border-radius: 2px;
 
     Rectangle {
         x: 6px; y: 6px;
         width: root.size - 12px;
         height: root.size - 12px;
-        background: #fff;
+        background: QrTokens.module-light;
         border-radius: 2px;
 
         Rectangle {
             x: 6px; y: 6px;
             width: parent.width - 12px;
             height: parent.height - 12px;
-            background: #000;
+            background: QrTokens.module-dark;
             border-radius: 1px;
         }
     }
 }
 
 export component QrPlaceholder inherits Rectangle {
-    in property <string> label: @tr("(QR preview)");
+    in property <string> label: @tr("qr-placeholder-label", "(QR preview)");
 
-    width:  240px;
-    height: 240px;
-    background: #fff;
+    // Default size. Responsive overrides are applied at the usage site (e.g., in pairing_page.slint)
+    // using page-relative metrics to prevent compile-time 'parent' errors.
+    width:  Theme.qr-square-min;
+    height: self.width;
+    background: QrTokens.module-light;
     border-radius: Theme.radius-card;
     clip: true;
 
@@ -61,11 +71,11 @@ export component QrPlaceholder inherits Rectangle {
 
     // Scatter some small dark cells to suggest data modules.
     // Five hardcoded "data" rectangles — enough to look QR-like.
-    Rectangle { x: 70px; y: 70px; width: 10px; height: 10px; background: #000; }
-    Rectangle { x: 90px; y: 90px; width: 10px; height: 10px; background: #000; }
-    Rectangle { x: 130px; y: 80px; width: 10px; height: 10px; background: #000; }
-    Rectangle { x: 110px; y: 130px; width: 10px; height: 10px; background: #000; }
-    Rectangle { x: 160px; y: 110px; width: 10px; height: 10px; background: #000; }
+    Rectangle { x: 70px; y: 70px; width: 10px; height: 10px; background: QrTokens.module-dark; }
+    Rectangle { x: 90px; y: 90px; width: 10px; height: 10px; background: QrTokens.module-dark; }
+    Rectangle { x: 130px; y: 80px; width: 10px; height: 10px; background: QrTokens.module-dark; }
+    Rectangle { x: 110px; y: 130px; width: 10px; height: 10px; background: QrTokens.module-dark; }
+    Rectangle { x: 160px; y: 110px; width: 10px; height: 10px; background: QrTokens.module-dark; }
 
     // Centre label — overlays on the QR (like a real QR with a logo in centre).
     Rectangle {

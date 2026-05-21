@@ -1,0 +1,50 @@
+name: ui-lint
+
+on:
+  pull_request:
+    paths:
+      - 'ui/**'
+      - 'docs/ui-slint-best-practices/**'
+
+jobs:
+  ui-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Forbid raw hex colours in FCast Slint files
+        # ui/components/std/ and ui/components/qr_placeholder.slint are excluded:
+        # std/ is vendored Slint widget styling; qr_placeholder.slint intentionally
+        # uses black/white module colours that have no semantic token equivalent.
+        run: |
+          set -euo pipefail
+          ! git grep -nE '#[0-9a-fA-F]{3,8}' \
+              -- 'ui/components/*.slint' 'ui/pages/*.slint' \
+                 'ui/main.slint' 'ui/bridge.slint' \
+                 ':!ui/components/qr_placeholder.slint' \
+                 ':!ui/components/std/'
+
+      - name: Forbid hard-coded font-size px
+        run: |
+          set -euo pipefail
+          ! git grep -nE 'font-size: [0-9]+px' \
+              -- 'ui/components/*.slint' 'ui/pages/*.slint' \
+                 ':!ui/components/std/'
+
+      - name: Forbid value-compares against @tr in ComboBoxes
+        run: |
+          set -euo pipefail
+          ! git grep -nF 'value == @tr(' -- 'ui/'
+
+      - name: Forbid direct Bridge.active-panel writes
+        # Navigation must go through PanelBridge.push / .pop / .replace.
+        run: |
+          set -euo pipefail
+          ! git grep -nE 'Bridge\.active-panel\s*=' -- 'ui/'
+
+      - name: Forbid setting Bridge.lifecycle directly
+        # Lifecycle transitions must call Bridge.exit-lifecycle() or
+        # Bridge.engage-lock / engage-stealth / start-snapshot-countdown.
+        run: |
+          set -euo pipefail
+          ! git grep -nE 'Bridge\.lifecycle\s*=' -- 'ui/'

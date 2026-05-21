@@ -1,0 +1,99 @@
+// panel_chrome.slint — Reusable panel-level UI primitives.
+//
+// Exports:
+//   PanelHeader        — 56px header with title + single "Done" button.
+//   PanelHeaderActions — 56px header with title + free-form @children actions.
+//   Card               — surface-card rounded rectangle with standard padding.
+//   FormRow            — vertical label + control(s) pair.
+//
+// Slint docs ref:
+//   draft/slint-ui/docs/astro/src/content/docs/guide/development/custom-controls.mdx
+
+import { Theme } from "../theme.slint";
+import { TextButton } from "buttons.slint";
+
+// Standard header used by ~80 % of panels: title left, "Done" right.
+export component PanelHeader inherits Rectangle {
+    in property <string> title;
+    callback close-clicked();
+
+    height: Theme.header-height;
+    background: Theme.surface-card;
+
+    HorizontalLayout {
+        padding: Theme.padding-screen;
+        spacing: Theme.spacing-default;
+
+        Text {
+            text: root.title;
+            color: Theme.text-primary;
+            font-size: Theme.font-size-heading;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            accessible-role: text;
+            accessible-label: root.title;
+        }
+
+        TextButton {
+            label: @tr("close-panel-button" => "Done");
+            clicked => { root.close-clicked(); }
+        }
+    }
+}
+
+// Header variant for panels with custom trailing actions (Save+Cancel, etc.).
+export component PanelHeaderActions inherits Rectangle {
+    in property <string> title;
+
+    height: Theme.header-height;
+    background: Theme.surface-card;
+
+    HorizontalLayout {
+        padding: Theme.padding-screen;
+        spacing: Theme.spacing-default;
+
+        Text {
+            text: root.title;
+            color: Theme.text-primary;
+            font-size: Theme.font-size-heading;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            accessible-role: text;
+            accessible-label: root.title;
+        }
+
+        @children
+    }
+}
+
+// surface-card rounded container used for every settings group.
+export component Card inherits Rectangle {
+    in property <length> min-card-height: 56px;
+
+    background: Theme.surface-card;
+    border-radius: Theme.radius-card;
+    min-height: root.min-card-height;
+    clip: true;
+
+    VerticalLayout {
+        padding-left:   Theme.padding-screen;
+        padding-right:  Theme.padding-screen;
+        padding-top:    12px;
+        padding-bottom: 12px;
+        spacing: Theme.spacing-tight;
+        @children
+    }
+}
+
+// Vertical label + control(s) pair, 4px gap.
+export component FormRow inherits VerticalLayout {
+    in property <string> label;
+    spacing: Theme.spacing-tight;
+
+    Text {
+        text: root.label;
+        color: Theme.text-secondary;
+        font-size: Theme.font-size-label;
+    }
+    @children
+}

@@ -1,0 +1,22 @@
+// state/app_bridge.slint — App lifecycle global.
+
+import { AppState, LifecycleMode } from "../bridge.slint";
+
+export global AppBridge {
+    // Slint writes only via change-state(). Rust reads freely.
+    out property <AppState>      app-state:     AppState.Disconnected;
+    // Rust writes via set_lifecycle. Slint calls exit-lifecycle() to request exit.
+    in property <LifecycleMode>  lifecycle:     LifecycleMode.normal;
+    in-out property <int>        snapshot-secs: 5;
+    in property <string>         app-version:   "";
+
+    callback back-requested();
+    callback engage-lock();
+    callback engage-stealth();
+    callback start-snapshot-countdown(int);
+    callback exit-lifecycle();
+
+    public function change-state(to: AppState) {
+        AppBridge.app-state = to;
+    }
+}

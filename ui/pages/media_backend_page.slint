@@ -1,34 +1,53 @@
 import { ScrollView, LineEdit, ComboBox } from "std-widgets.slint";
 import { Bridge, Panel, MediaBackendKind, MediaBackendState } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, DestructiveButton, TextButton } from "../components/buttons.slint";
 import { SettingsSection } from "../components/settings_rows.slint";
+import { PanelHeader, Card, FormRow } from "../components/panel_chrome.slint";
+import { StatusPill } from "../components/status_pill.slint";
+import { ConfirmDialog } from "../components/confirm_dialog.slint";
 
 export component MediaBackendPage inherits Rectangle {
     in-out property <bool> any-edits-pending: false;
+    in-out property <bool> show-discard-confirm: false;
+
+    // Order MUST match the ComboBox model below.
+    property <[string]> backend-labels: [
+        @tr("media-backend-engine-migration", "Migration (in-process)"),
+        @tr("media-backend-engine-gstpop",    "gst-pop (WebSocket)"),
+    ];
+
+    pure function backend-from-index(i: int) -> MediaBackendKind {
+        return i == 0 ? MediaBackendKind.migration : MediaBackendKind.gst-pop;
+    }
+    pure function backend-to-index(k: MediaBackendKind) -> int {
+        return k == MediaBackendKind.migration ? 0 : 1;
+    }
 
     width: 100%;
     height: 100%;
     background: Theme.surface-primary;
 
-    VerticalLayout {
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Media backend");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
+    // Focus the panel on open; Escape triggers discard-confirm when edits are pending.
+    forward-focus: panel-scope;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                if root.any-edits-pending {
+                    root.show-discard-confirm = true;
+                    return accept;
                 }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
+                PanelBridge.pop();
+                return accept;
             }
+            return reject;
+        }
+
+    VerticalLayout {
+        PanelHeader {
+            title: @tr("Media backend");
+            close-clicked => { PanelBridge.pop(); }
         }
 
         ScrollView {
@@ -38,55 +57,7 @@ export component MediaBackendPage inherits Rectangle {
                 spacing: Theme.spacing-default;
                 padding: Theme.padding-screen;
 
-                Rectangle {
-                    background: Bridge.media-backend-state == MediaBackendState.error
-                        ? Theme.error.darker(35%)
-                        : Theme.surface-card;
-                    border-radius: Theme.radius-card;
-                    min-height: 56px;
-                    HorizontalLayout {
-                        padding: Theme.padding-screen;
-                        spacing: 8px;
-                        Rectangle {
-                            width: 12px;
-                            height: 12px;
-                            border-radius: 6px;
-                            background:
-                                Bridge.media-backend-state == MediaBackendState.ready    ? Theme.success :
-                                Bridge.media-backend-state == MediaBackendState.starting ? Theme.warning :
-                                Bridge.media-backend-state == MediaBackendState.probing  ? Theme.warning :
-                                Bridge.media-backend-state == MediaBackendState.error    ? Theme.error-fg :
-                                Theme.text-disabled;
-                            y: (parent.height - self.height) / 2;
-                        }
-                        VerticalLayout {
-                            spacing: 2px;
-                            horizontal-stretch: 1;
-                            Text {
-                                text:
-                                    Bridge.media-backend-state == MediaBackendState.ready    ? @tr("Ready") :
-                                    Bridge.media-backend-state == MediaBackendState.starting ? @tr("Starting gst-pop service\u{2026}") :
-                                    Bridge.media-backend-state == MediaBackendState.probing  ? @tr("Probing\u{2026}") :
-                                    Bridge.media-backend-state == MediaBackendState.error    ? @tr("Error") :
-                                    @tr("Disconnected");
-                                color: Theme.text-primary;
-                                font-size: Theme.font-size-body;
-                            }
-                            if Bridge.media-backend-status-text != "": Text {
-                                text: Bridge.media-backend-status-text;
-                                color: Theme.text-secondary;
-                                font-size: Theme.font-size-label;
-                                wrap: word-wrap;
-                            }
-                            if Bridge.media-backend-error-text != "": Text {
-                                text: Bridge.media-backend-error-text;
-                                color: Theme.error-fg;
-                                font-size: Theme.font-size-label;
-                                wrap: word-wrap;
-                            }
-                        }
-                    }
-                }
+                StatusPill { }
 
                 SettingsSection {
                     title: @tr("BACKEND");
@@ -105,12 +76,10 @@ export component MediaBackendPage inherits Rectangle {
                                 horizontal-stretch: 1;
                             }
                             ComboBox {
-                                model: [@tr("Migration (in-process)"), @tr("gst-pop (WebSocket)")];
-                                current-index: Bridge.media-backend == MediaBackendKind.migration ? 0 : 1;
+                                model: root.backend-labels;
+                                current-index: backend-to-index(Bridge.media-backend);
                                 selected(value) => {
-                                    Bridge.media-backend = value == @tr("Migration (in-process)")
-                                        ? MediaBackendKind.migration
-                                        : MediaBackendKind.gst-pop;
+                                    Bridge.media-backend = backend-from-index(self.current-index);
                                     root.any-edits-pending = true;
                                 }
                             }
@@ -121,21 +90,10 @@ export component MediaBackendPage inherits Rectangle {
                 if Bridge.media-backend == MediaBackendKind.gst-pop: SettingsSection {
                     title: @tr("GST-POP DAEMON");
 
-                    Rectangle {
-                        background: Theme.surface-card;
-                        border-radius: Theme.radius-card;
-                        min-height: 88px;
-                        VerticalLayout {
-                            padding-left: Theme.padding-screen;
-                            padding-right: Theme.padding-screen;
-                            padding-top: 12px;
-                            padding-bottom: 12px;
-                            spacing: 4px;
-                            Text {
-                                text: @tr("WebSocket URL");
-                                color: Theme.text-secondary;
-                                font-size: Theme.font-size-label;
-                            }
+                    Card {
+                        min-card-height: 88px;
+                        FormRow {
+                            label: @tr("WebSocket URL");
                             LineEdit {
                                 placeholder-text: "ws://127.0.0.1:9000";
                                 text <=> Bridge.gstpop-url;
@@ -144,21 +102,10 @@ export component MediaBackendPage inherits Rectangle {
                         }
                     }
 
-                    Rectangle {
-                        background: Theme.surface-card;
-                        border-radius: Theme.radius-card;
-                        min-height: 88px;
-                        VerticalLayout {
-                            padding-left: Theme.padding-screen;
-                            padding-right: Theme.padding-screen;
-                            padding-top: 12px;
-                            padding-bottom: 12px;
-                            spacing: 4px;
-                            Text {
-                                text: @tr("API key (optional)");
-                                color: Theme.text-secondary;
-                                font-size: Theme.font-size-label;
-                            }
+                    Card {
+                        min-card-height: 88px;
+                        FormRow {
+                            label: @tr("API key (optional)");
                             LineEdit {
                                 placeholder-text: @tr("Leave empty if --api-key was not set on the daemon");
                                 input-type: password;
@@ -168,21 +115,10 @@ export component MediaBackendPage inherits Rectangle {
                         }
                     }
 
-                    Rectangle {
-                        background: Theme.surface-card;
-                        border-radius: Theme.radius-card;
-                        min-height: 88px;
-                        VerticalLayout {
-                            padding-left: Theme.padding-screen;
-                            padding-right: Theme.padding-screen;
-                            padding-top: 12px;
-                            padding-bottom: 12px;
-                            spacing: 4px;
-                            Text {
-                                text: @tr("Pipeline id (gst-pop assigns \"0\" first)");
-                                color: Theme.text-secondary;
-                                font-size: Theme.font-size-label;
-                            }
+                    Card {
+                        min-card-height: 88px;
+                        FormRow {
+                            label: @tr("Pipeline id (gst-pop assigns \"0\" first)");
                             LineEdit {
                                 placeholder-text: "0";
                                 text <=> Bridge.gstpop-pipeline-id;
@@ -283,5 +219,19 @@ export component MediaBackendPage inherits Rectangle {
                 }
             }
         }
+    }   // end VerticalLayout
+
+    }   // end FocusScope
+
+    if root.show-discard-confirm: ConfirmDialog {
+        title: @tr("Discard changes?");
+        body: @tr("Your unsaved settings changes will be lost.");
+        confirm-label: @tr("Discard");
+        destructive: true;
+        confirmed => {
+            root.show-discard-confirm = false;
+            PanelBridge.pop();
+        }
+        dismissed => { root.show-discard-confirm = false; }
     }
 }

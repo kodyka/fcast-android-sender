@@ -1,0 +1,87 @@
+// status_pill.slint — Media-backend connection status indicator.
+//
+// Three correlated properties (dot color, label text, pill background)
+// flip in lock-step via a `states` block so adding a new state only
+// requires one touch point, not three scattered ternaries.
+
+import { Theme } from "../theme.slint";
+import { Bridge, MediaBackendState } from "../bridge.slint";
+
+export component StatusPill inherits Rectangle {
+    in property <MediaBackendState> state:       Bridge.media-backend-state;
+    in property <string>            status-text: Bridge.media-backend-status-text;
+    in property <string>            error-text:  Bridge.media-backend-error-text;
+
+    border-radius: Theme.radius-card;
+    min-height: 56px;
+    background: Theme.surface-card;
+
+    accessible-role:  text;
+    accessible-label: dot-label;
+
+    private property <color>  dot-color:  Theme.text-disabled;
+    private property <string> dot-label:  @tr("Disconnected");
+
+    states [
+        ready       when root.state == MediaBackendState.ready       : {
+            dot-color:  Theme.success;
+            dot-label:  @tr("Ready");
+        }
+        starting    when root.state == MediaBackendState.starting    : {
+            dot-color:  Theme.warning;
+            dot-label:  @tr("Starting gst-pop service\u{2026}");
+            in { animate dot-color { duration: 200ms; } }
+        }
+        probing     when root.state == MediaBackendState.probing     : {
+            dot-color:  Theme.warning;
+            dot-label:  @tr("Probing\u{2026}");
+            in { animate dot-color { duration: 200ms; } }
+        }
+        error       when root.state == MediaBackendState.error       : {
+            dot-color:    Theme.error-fg;
+            dot-label:    @tr("Error");
+            background:   Theme.error.darker(35%);
+            in { animate background { duration: 200ms; } }
+        }
+        disconnected when root.state == MediaBackendState.disconnected : {
+            dot-color:  Theme.text-disabled;
+            dot-label:  @tr("Disconnected");
+        }
+    ]
+
+    HorizontalLayout {
+        padding: Theme.padding-screen;
+        spacing: 8px;
+
+        Rectangle {
+            width: 12px;
+            height: 12px;
+            border-radius: self.height / 2;
+            background: root.dot-color;
+            y: (parent.height - self.height) / 2;
+        }
+
+        VerticalLayout {
+            spacing: 2px;
+            horizontal-stretch: 1;
+
+            Text {
+                text: root.dot-label;
+                color: Theme.text-primary;
+                font-size: Theme.font-size-body;
+            }
+            if root.status-text != "": Text {
+                text: root.status-text;
+                color: Theme.text-secondary;
+                font-size: Theme.font-size-label;
+                wrap: word-wrap;
+            }
+            if root.error-text != "": Text {
+                text: root.error-text;
+                color: Theme.error-fg;
+                font-size: Theme.font-size-label;
+                wrap: word-wrap;
+            }
+        }
+    }
+}

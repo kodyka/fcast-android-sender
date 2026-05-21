@@ -1,0 +1,20 @@
+// state/macros.slint — Macros and macro-edit state.
+
+import { Macro, MacroStep, QuickActionKind } from "../bridge.slint";
+
+export global Macros {
+    in property <[Macro]> macros: [];
+
+    in-out property <string>    edit-id:       "";
+    in-out property <string>    draft-name:    "";
+    in-out property <bool>      draft-enabled: true;
+    in property <[MacroStep]>   draft-steps:   [];
+
+    callback save(id: string, name: string, steps: [MacroStep], enabled: bool);
+    callback delete(id: string);
+    callback run(id: string);
+    callback load-draft(id: string);
+    callback draft-add-step(kind: QuickActionKind);
+    callback draft-remove-step(idx: int);
+    callback draft-move-step(from: int, to: int);
+}

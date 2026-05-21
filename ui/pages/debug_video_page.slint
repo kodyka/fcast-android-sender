@@ -10,12 +10,14 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import {
     SettingsSection,
     SettingsToggleRow,
 } from "../components/settings_rows.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 export component DebugVideoPage inherits Rectangle {
     in-out property <bool> mock-show-element-graph:    false;
@@ -38,23 +40,9 @@ export component DebugVideoPage inherits Rectangle {
     background: Theme.surface-primary;
 
     VerticalLayout {
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Video pipeline");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Video pipeline");
+            close-clicked => { PanelBridge.pop(); }
         }
 
         ScrollView {

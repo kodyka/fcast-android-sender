@@ -19,7 +19,7 @@ Cloning `slint-ui/slint` into the dev environment is slow (≈1 GB on first clon
 - **Commit pinned at import:** `d79203f422c285a7da7812a37308897d851197d4` (`d79203f`, 2026-05-02 — "Improve data URI image embedding from #9414 (#11602)")
 - **Slint package version at that commit:** 1.17.0 (per `astro/package.json`)
 
-The FCast Slint sender is currently pinned to Slint 1.15.1 (via the futo fork in `Cargo.toml`). The 1.17 docs are forward-compatible reference for the language, std-widgets, and primitives we use; any 1.16/1.17-only feature noted in the docs will be flagged inline in the consuming phase doc.
+The FCast Slint sender is currently pinned to Slint 1.16.0 (in `Cargo.toml`). The 1.17 docs are forward-compatible reference for the language, std-widgets, and primitives we use; any 1.17-only feature noted in the docs will be flagged inline in the consuming phase doc.
 
 ## What's mirrored
 

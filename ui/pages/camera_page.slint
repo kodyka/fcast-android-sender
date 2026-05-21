@@ -1,7 +1,7 @@
 // camera_page.slint — Camera capture settings sub-page (UI-only placeholder).
 //
 // Reachable from FullSettingsPage's "Camera" row in the AUDIO & VIDEO
-// section, which sets `Bridge.active-panel = Panel.camera`. All controls
+// section, which calls `PanelBridge.push(Panel.camera)`. All controls
 // flip inline `in-out` properties on this component — no Rust round-trip.
 // Phase 8 will swap the inline state for Bridge.* setters tied to Android
 // CameraX / GStreamer camerasrc once Rust camera capability lands.
@@ -14,6 +14,7 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import {
@@ -22,6 +23,7 @@ import {
     SettingsToggleRow,
     SettingsSliderRow,
 } from "../components/settings_rows.slint";
+import { PanelHeader } from "../components/panel_chrome.slint";
 
 // Internal component — not exported. Used only inside CameraPage's zoom row.
 // If a second use site appears, lift to components/ in a follow-up phase
@@ -55,25 +57,18 @@ export component CameraPage inherits Rectangle {
     height: 100%;
     background: Theme.surface-primary;
 
+    forward-focus: panel-scope;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape { PanelBridge.pop(); return accept; }
+            return reject;
+        }
+
     VerticalLayout {
         // ── Header ──────────────────────────────────────────────────────
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                Text {
-                    text: @tr("Camera");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("close-panel-button" => "Done");
-                    clicked => { Bridge.active-panel = Panel.none; }
-                }
-            }
+        PanelHeader {
+            title: @tr("Camera");
+            close-clicked => { PanelBridge.pop(); }
         }
 
         // ── Body (scrollable) ───────────────────────────────────────────
@@ -171,4 +166,5 @@ export component CameraPage inherits Rectangle {
             }
         }
     }
+    }   // end FocusScope
 }

@@ -13,9 +13,11 @@
 //   draft/slint-ui/docs/astro/src/content/docs/reference/std-widgets/views/scrollview.mdx
 
 import { ScrollView, LineEdit } from "std-widgets.slint";
-import { Bridge, Panel, Macro, MacroStep } from "../bridge.slint";
+import { Bridge, Panel, Macro, MacroStep, QuickActionKind } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton, PrimaryButton, DestructiveButton } from "../components/buttons.slint";
+import { PanelHeaderActions } from "../components/panel_chrome.slint";
 
 export component MacroEditPage inherits Rectangle {
     in-out property <bool>   show-add-step-picker: false;
@@ -23,45 +25,43 @@ export component MacroEditPage inherits Rectangle {
     // Predefined catalogue of action ids that can become macro steps.
     // Still hardcoded here; a future phase will source this from
     // Bridge.quick-actions so macro steps stay in sync with the bar.
-    property <[{action-id: string, label: string}]> available-actions: [
-        { action-id: "scan-qr",        label: @tr("Scan QR") },
-        { action-id: "audio",          label: @tr("Open Audio") },
-        { action-id: "camera",         label: @tr("Open Camera") },
-        { action-id: "record",         label: @tr("Start Recording") },
-        { action-id: "stop-recording", label: @tr("Stop Recording") },
-        { action-id: "stop-cast",      label: @tr("Stop Cast") },
+    property <[{kind: QuickActionKind, label: string}]> available-actions: [
+        { kind: QuickActionKind.scan-qr,      label: @tr("Scan QR") },
+        { kind: QuickActionKind.open-audio,   label: @tr("Open Audio") },
+        { kind: QuickActionKind.open-camera,  label: @tr("Open Camera") },
+        { kind: QuickActionKind.start-record, label: @tr("Start Recording") },
+        { kind: QuickActionKind.stop-record,  label: @tr("Stop Recording") },
+        { kind: QuickActionKind.stop-cast,    label: @tr("Stop Cast") },
     ];
 
     width: 100%;
     height: 100%;
     background: Theme.surface-primary;
 
+    forward-focus: name-edit;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                PanelBridge.pop();
+                return accept;
+            }
+            return reject;
+        }
+
     VerticalLayout {
-        Rectangle {
-            height: 56px;
-            background: Theme.surface-card;
-            HorizontalLayout {
-                padding: Theme.padding-screen;
-                spacing: Theme.spacing-default;
-                Text {
-                    text: Bridge.macro-edit-id == ""
-                        ? @tr("New macro")
-                        : @tr("Edit macro");
-                    color: Theme.text-primary;
-                    font-size: Theme.font-size-heading;
-                    vertical-alignment: center;
-                    horizontal-stretch: 1;
-                }
-                TextButton {
-                    label: @tr("dismiss-dialog-button" => "Cancel");
-                    clicked => { Bridge.active-panel = Panel.macros; }
-                }
-                PrimaryButton {
-                    label: @tr("save-button" => "Save");
-                    clicked => {
-                        Bridge.save-macro(Bridge.macro-edit-id, Bridge.draft-macro-name, Bridge.draft-macro-steps, Bridge.draft-macro-enabled);
-                        Bridge.active-panel = Panel.macros;
-                    }
+        PanelHeaderActions {
+            title: Bridge.macro-edit-id == ""
+                ? @tr("New macro")
+                : @tr("Edit macro");
+            TextButton {
+                label: @tr("dismiss-dialog-button" => "Cancel");
+                clicked => { PanelBridge.pop(); }
+            }
+            PrimaryButton {
+                label: @tr("save-button" => "Save");
+                clicked => {
+                    Bridge.save-macro(Bridge.macro-edit-id, Bridge.draft-macro-name, Bridge.draft-macro-steps, Bridge.draft-macro-enabled);
+                    PanelBridge.pop();
                 }
             }
         }
@@ -79,7 +79,7 @@ export component MacroEditPage inherits Rectangle {
                     color: Theme.text-secondary;
                     font-size: Theme.font-size-label;
                 }
-                LineEdit {
+                name-edit := LineEdit {
                     text <=> Bridge.draft-macro-name;
                     placeholder-text: @tr("Untitled macro");
                 }
@@ -192,7 +192,8 @@ export component MacroEditPage inherits Rectangle {
                 }
             }
         }
-    }
+    }   // end VerticalLayout
+    }   // end FocusScope
 
     // ── Add-step picker overlay ──────────────────────────────────────────
     //
@@ -203,7 +204,7 @@ export component MacroEditPage inherits Rectangle {
     if root.show-add-step-picker: Rectangle {
         width: 100%;
         height: 100%;
-        background: #00000080;
+        background: Theme.scrim-strong;
 
         TouchArea {
             clicked => { root.show-add-step-picker = false; }
@@ -239,7 +240,7 @@ export component MacroEditPage inherits Rectangle {
                                 : transparent;
                             action-ta := TouchArea {
                                 clicked => {
-                                    Bridge.draft-add-step(action.action-id);
+                                    Bridge.draft-add-step(action.kind);
                                     root.show-add-step-picker = false;
                                 }
                             }
