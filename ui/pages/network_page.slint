@@ -1,7 +1,7 @@
 // network_page.slint — Network interfaces list + Wi-Fi Aware opt-in (UI-only).
 //
 // Reachable from FullSettingsPage's "Network" row (sets
-// `Bridge.active-panel = Panel.network`). All toggles flip inline state;
+// `PanelBridge.push(Panel.network)`). All toggles flip inline state;
 // no real interface enumeration, no Wi-Fi Aware permission flow. Phase 8
 // will swap mock-interfaces for a Bridge-published list and the Wi-Fi
 // Aware toggle for a real WifiAwareManager opt-in.
@@ -13,6 +13,7 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel, NetworkInterface, NetworkKind } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import {
@@ -156,7 +157,7 @@ export component NetworkPage inherits Rectangle {
         // ── Header ──────────────────────────────────────────────────────
         PanelHeader {
             title: @tr("Network");
-            close-clicked => { Bridge.active-panel = Panel.none; }
+            close-clicked => { PanelBridge.pop(); }
         }
 
         // ── Body ────────────────────────────────────────────────────────

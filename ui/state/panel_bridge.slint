@@ -7,7 +7,7 @@ import { Panel } from "../bridge.slint";
 
 export global PanelBridge {
     in-out property <Panel>    active: Panel.none;
-    private property <[Panel]> stack: [];
+    in property <[Panel]> stack: [];
 
     // ── Navigation callbacks (Slint → Rust, wired in step 11) ───────
     callback push(p: Panel);

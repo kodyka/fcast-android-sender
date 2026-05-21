@@ -14,6 +14,7 @@
 
 import { ScrollView, LineEdit } from "std-widgets.slint";
 import { Bridge, Panel, Macro, MacroStep, QuickActionKind } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton, PrimaryButton, DestructiveButton } from "../components/buttons.slint";
 import { PanelHeaderActions } from "../components/panel_chrome.slint";
@@ -44,13 +45,13 @@ export component MacroEditPage inherits Rectangle {
                 : @tr("Edit macro");
             TextButton {
                 label: @tr("dismiss-dialog-button" => "Cancel");
-                clicked => { Bridge.active-panel = Panel.macros; }
+                clicked => { PanelBridge.pop(); }
             }
             PrimaryButton {
                 label: @tr("save-button" => "Save");
                 clicked => {
                     Bridge.save-macro(Bridge.macro-edit-id, Bridge.draft-macro-name, Bridge.draft-macro-steps, Bridge.draft-macro-enabled);
-                    Bridge.active-panel = Panel.macros;
+                    PanelBridge.pop();
                 }
             }
         }

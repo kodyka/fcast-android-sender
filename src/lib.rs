@@ -125,6 +125,28 @@ const CAST_LINK_ID: &str = "cast-link-1";
 
 slint::include_modules!();
 
+struct PanelStack(std::cell::RefCell<Vec<Panel>>);
+
+impl PanelStack {
+    fn new() -> Self {
+        Self(std::cell::RefCell::new(Vec::new()))
+    }
+    fn push_panel(&self, current: Panel) {
+        if current != Panel::None {
+            self.0.borrow_mut().insert(0, current);
+        }
+    }
+    fn pop_panel(&self) -> Panel {
+        if self.0.borrow().is_empty() {
+            return Panel::None;
+        }
+        self.0.borrow_mut().remove(0)
+    }
+    fn as_model(&self) -> slint::ModelRc<Panel> {
+        std::rc::Rc::new(slint::VecModel::from(self.0.borrow().clone())).into()
+    }
+}
+
 macro_rules! log_err {
     ($res:expr, $msg: expr) => {
         if let Err(err) = ($res) {
@@ -586,8 +608,8 @@ fn call_java_method_no_args(_app: &PlatformApp, _method: JavaMethod) {}
 fn handle_back_request(ui: &MainWindow, app: Option<&PlatformApp>) {
     let bridge = ui.global::<Bridge>();
 
-    if bridge.get_active_panel() != Panel::None {
-        bridge.set_active_panel(Panel::None);
+    if ui.global::<PanelBridge>().get_active() != Panel::None {
+        ui.global::<PanelBridge>().invoke_pop();
         return;
     }
 
@@ -2131,6 +2153,54 @@ fn android_main(app: PlatformApp) {
             event_tx
                 .send(Event::ConnectToDevice(device_name.to_string()))
                 .unwrap();
+        }
+    });
+
+    let panel_stack = std::rc::Rc::new(PanelStack::new());
+
+    ui.global::<PanelBridge>().on_push({
+        let stack = panel_stack.clone();
+        let ui_weak = ui.as_weak();
+        move |p: Panel| {
+            let Some(ui) = ui_weak.upgrade() else { return };
+            let pb = ui.global::<PanelBridge>();
+            let current = pb.get_active();
+            if current == p { return; }
+            stack.push_panel(current);
+            pb.set_active(p);
+            pb.set_stack(stack.as_model());
+        }
+    });
+
+    ui.global::<PanelBridge>().on_pop({
+        let stack = panel_stack.clone();
+        let ui_weak = ui.as_weak();
+        move || {
+            let Some(ui) = ui_weak.upgrade() else { return };
+            let pb = ui.global::<PanelBridge>();
+            pb.set_active(stack.pop_panel());
+            pb.set_stack(stack.as_model());
+        }
+    });
+
+    ui.global::<PanelBridge>().on_replace({
+        let ui_weak = ui.as_weak();
+        move |p: Panel| {
+            if let Some(ui) = ui_weak.upgrade() {
+                ui.global::<PanelBridge>().set_active(p);
+            }
+        }
+    });
+
+    ui.global::<PanelBridge>().on_close_all({
+        let stack = panel_stack.clone();
+        let ui_weak = ui.as_weak();
+        move || {
+            let Some(ui) = ui_weak.upgrade() else { return };
+            stack.0.borrow_mut().clear();
+            let pb = ui.global::<PanelBridge>();
+            pb.set_active(Panel::None);
+            pb.set_stack(stack.as_model());
         }
     });
 

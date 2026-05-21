@@ -11,6 +11,7 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel, CastHistoryEntry } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import { ConfirmDialog } from "../components/confirm_dialog.slint";
@@ -56,7 +57,7 @@ export component CastHistoryPage inherits Rectangle {
             }
             TextButton {
                 label: @tr("close-panel-button" => "Done");
-                clicked => { Bridge.active-panel = Panel.none; }
+                clicked => { PanelBridge.pop(); }
             }
         }
 
@@ -89,7 +90,7 @@ export component CastHistoryPage inherits Rectangle {
                     row-ta := TouchArea {
                         clicked => {
                             Bridge.open-history-detail(entry.id);
-                            Bridge.active-panel = Panel.cast-history-detail;
+                            PanelBridge.push(Panel.cast-history-detail);
                         }
                     }
 

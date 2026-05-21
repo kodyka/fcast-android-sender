@@ -5,6 +5,7 @@
 // so the SDK common.slint path gains one extra `../` vs. main.slint.
 import { VerticalBox, Spinner, LineEdit } from "std-widgets.slint";
 import { Bridge, Panel } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton } from "../components/buttons.slint";
 import { ReceiverContextMenu } from "../components/receiver_context_menu.slint";
@@ -118,7 +119,7 @@ export component ConnectView inherits Rectangle {
                     vertical-alignment: center;
                 }
                 TouchArea {
-                    clicked => { Bridge.active-panel = Panel.pairing; }
+                    clicked => { PanelBridge.push(Panel.pairing); }
                 }
             }
         }
@@ -141,7 +142,7 @@ export component ConnectView inherits Rectangle {
                 root.show-context-menu = false;
                 Bridge.selected-receiver-id = root.context-receiver-id;
                 Bridge.selected-receiver-name = root.context-receiver-name;
-                Bridge.active-panel = Panel.receiver-rename;
+                PanelBridge.push(Panel.receiver-rename);
             }
             set-default-clicked => {
                 root.show-context-menu = false;

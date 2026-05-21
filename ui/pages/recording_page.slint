@@ -13,6 +13,7 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel, RecordingState } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Recording } from "../state/recording.slint";
 import { Theme } from "../theme.slint";
 import { TextButton, PrimaryButton, DestructiveButton } from "../components/buttons.slint";
@@ -77,7 +78,7 @@ export component RecordingPage inherits Rectangle {
         // ── Header ──────────────────────────────────────────────────────
         PanelHeader {
             title: @tr("Recording");
-            close-clicked => { Bridge.active-panel = Panel.none; }
+            close-clicked => { PanelBridge.pop(); }
         }
 
         ScrollView {

@@ -12,6 +12,7 @@
 
 import { ListView } from "std-widgets.slint";
 import { Bridge, Panel, LogLevel, LogEntry } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import { PanelHeader } from "../components/panel_chrome.slint";
@@ -80,7 +81,7 @@ export component DebugLogPage inherits Rectangle {
         // ── Header ──────────────────────────────────────────────────────
         PanelHeader {
             title: @tr("Debug log");
-            close-clicked => { Bridge.active-panel = Panel.none; }
+            close-clicked => { PanelBridge.pop(); }
         }
 
         // ── Filter chip bar ─────────────────────────────────────────────

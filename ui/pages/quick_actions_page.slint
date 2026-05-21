@@ -11,6 +11,7 @@
 
 import { ScrollView } from "std-widgets.slint";
 import { Bridge, Panel, QuickAction } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import {
@@ -114,7 +115,7 @@ export component QuickActionsPage inherits Rectangle {
         // ── Header ──────────────────────────────────────────────────────
         PanelHeader {
             title: @tr("Quick actions");
-            close-clicked => { Bridge.active-panel = Panel.none; }
+            close-clicked => { PanelBridge.pop(); }
         }
 
         // ── Overflow banner ─────────────────────────────────────────────

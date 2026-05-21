@@ -12,7 +12,8 @@
 // Slint docs ref:
 //   draft/slint-ui/docs/astro/src/content/docs/guide/language/coding/repetition-and-data-models.mdx
 
-import { Bridge, Panel } from "../bridge.slint";
+import { Panel } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 
 export component PanelHost inherits Rectangle {
     in property <length> safe-top;
@@ -22,7 +23,7 @@ export component PanelHost inherits Rectangle {
     width: parent.width;
     height: parent.height;
 
-    visible: Bridge.active-panel != Panel.none;
+    visible: PanelBridge.active != Panel.none;
 
     // Inset rect — children stretch to fill this, safe-area math lives here once.
     Rectangle {

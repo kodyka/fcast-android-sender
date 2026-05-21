@@ -1,6 +1,7 @@
 import { ScrollView } from "std-widgets.slint";
 import { Theme } from "../theme.slint";
 import { Bridge, Panel } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { TextButton } from "../components/buttons.slint";
 import {
     SettingsSection, SettingsToggleRow, SettingsValueRow, SettingsSliderRow
@@ -16,7 +17,7 @@ export component AudioPage inherits Rectangle {
         // Header
         PanelHeader {
             title: @tr("Audio");
-            close-clicked => { Bridge.active-panel = Panel.none; }
+            close-clicked => { PanelBridge.pop(); }
         }
 
         ScrollView {

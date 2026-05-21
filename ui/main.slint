@@ -4,8 +4,8 @@
 // Bridge invariants (Phase 8 / Cluster E)
 // =====================================================================
 //
-// 1. Bridge.active-panel — Slint pages may write directly. Rust writes
-//    only through `open_panel(panel: Panel)` in lib.rs.
+// 1. PanelBridge.active — managed by PanelBridge.push/pop/replace/close-all.
+//    No direct property writes anywhere in Slint or Rust.
 //
 // 2. Bridge.lifecycle — Rust is the authoritative writer (set_lifecycle).
 //    Slint exit paths call Bridge.exit-lifecycle(); no direct property writes.
@@ -135,7 +135,7 @@ export component MainWindow inherits Window {
                 // visible:false blocks both rendering and touch/focus events (Slint docs:
                 // common-properties#visible). This prevents background LineEdit elements
                 // from stealing focus through the full-screen panel overlay.
-                visible: Bridge.active-panel == Panel.none;
+                visible: PanelBridge.active == Panel.none;
                 // Conditional elements: only the matching view is instantiated.
                 // Slint docs: https://releases.slint.dev/1.15.1/docs  (Conditional Elements)
                 if Bridge.app-state == AppState.Disconnected:      ConnectView { }
@@ -154,33 +154,33 @@ export component MainWindow inherits Window {
             safe-top:    root.sa-top;
             safe-bottom: root.sa-bottom;
 
-            if Bridge.active-panel == Panel.settings:            FullSettingsPage        { }
-            if Bridge.active-panel == Panel.debug:               FullDebugPage           { }
-            if Bridge.active-panel == Panel.codec-test:          CodecTestPage           { }
-            if Bridge.active-panel == Panel.backup-reset:        BackupResetPage         { }
-            if Bridge.active-panel == Panel.audio:               AudioPage               { }
-            if Bridge.active-panel == Panel.camera:              CameraPage              { }
-            if Bridge.active-panel == Panel.quick-actions:       QuickActionsPage        { }
-            if Bridge.active-panel == Panel.cast-history:        CastHistoryPage         { }
-            if Bridge.active-panel == Panel.cast-history-detail: CastHistoryDetailPage   { }
-            if Bridge.active-panel == Panel.recording:           RecordingPage           { }
-            if Bridge.active-panel == Panel.pairing: PairingPage {
-                close => { Bridge.active-panel = Panel.none; }
+            if PanelBridge.active == Panel.settings:            FullSettingsPage        { }
+            if PanelBridge.active == Panel.debug:               FullDebugPage           { }
+            if PanelBridge.active == Panel.codec-test:          CodecTestPage           { }
+            if PanelBridge.active == Panel.backup-reset:        BackupResetPage         { }
+            if PanelBridge.active == Panel.audio:               AudioPage               { }
+            if PanelBridge.active == Panel.camera:              CameraPage              { }
+            if PanelBridge.active == Panel.quick-actions:       QuickActionsPage        { }
+            if PanelBridge.active == Panel.cast-history:        CastHistoryPage         { }
+            if PanelBridge.active == Panel.cast-history-detail: CastHistoryDetailPage   { }
+            if PanelBridge.active == Panel.recording:           RecordingPage           { }
+            if PanelBridge.active == Panel.pairing: PairingPage {
+                close => { PanelBridge.pop(); }
             }
-            if Bridge.active-panel == Panel.receiver-rename: ReceiverRenamePage {
+            if PanelBridge.active == Panel.receiver-rename: ReceiverRenamePage {
                 current-name: Bridge.selected-receiver-name;
-                save(new-name) => { Bridge.active-panel = Panel.none; }
-                cancel        => { Bridge.active-panel = Panel.none; }
+                save(new-name) => { PanelBridge.pop(); }
+                cancel        => { PanelBridge.pop(); }
             }
-            if Bridge.active-panel == Panel.bitrate-presets:     BitratePresetsPage      { }
-            if Bridge.active-panel == Panel.bitrate-preset-edit: BitratePresetEditPage   { }
-            if Bridge.active-panel == Panel.macros:              MacrosPage              { }
-            if Bridge.active-panel == Panel.macro-edit:          MacroEditPage           { }
-            if Bridge.active-panel == Panel.debug-log:           DebugLogPage            { }
-            if Bridge.active-panel == Panel.debug-video:         DebugVideoPage          { }
-            if Bridge.active-panel == Panel.network:             NetworkPage             { }
-            if Bridge.active-panel == Panel.mixer:               MixerPage               { }
-            if Bridge.active-panel == Panel.media-backend:       MediaBackendPage        { }
+            if PanelBridge.active == Panel.bitrate-presets:     BitratePresetsPage      { }
+            if PanelBridge.active == Panel.bitrate-preset-edit: BitratePresetEditPage   { }
+            if PanelBridge.active == Panel.macros:              MacrosPage              { }
+            if PanelBridge.active == Panel.macro-edit:          MacroEditPage           { }
+            if PanelBridge.active == Panel.debug-log:           DebugLogPage            { }
+            if PanelBridge.active == Panel.debug-video:         DebugVideoPage          { }
+            if PanelBridge.active == Panel.network:             NetworkPage             { }
+            if PanelBridge.active == Panel.mixer:               MixerPage               { }
+            if PanelBridge.active == Panel.media-backend:       MediaBackendPage        { }
         }
 
         // ── Global banner overlay ─────────────────────────────────────────────────

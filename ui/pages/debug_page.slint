@@ -14,6 +14,7 @@
 
 import { VerticalBox, ScrollView } from "std-widgets.slint";
 import { Bridge, Panel } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, TextButton } from "../components/buttons.slint";
 import { PanelHeader } from "../components/panel_chrome.slint";
@@ -74,7 +75,7 @@ export component FullDebugPage inherits Rectangle {
         // ── Header ────────────────────────────────────────────────────────
         PanelHeader {
             title: @tr("Debug panel");
-            close-clicked => { Bridge.active-panel = Panel.none; }
+            close-clicked => { PanelBridge.pop(); }
         }
 
         // ── Body ──────────────────────────────────────────────────────────

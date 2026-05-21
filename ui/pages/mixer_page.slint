@@ -1,5 +1,6 @@
 import { LineEdit, Switch, ScrollView } from "std-widgets.slint";
 import { Bridge, Panel, SrtSource, MixerState } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, TextButton, DestructiveButton } from "../components/buttons.slint";
 import { SettingsSection, SettingsSliderRow } from "../components/settings_rows.slint";
@@ -348,7 +349,7 @@ export component MixerPage inherits Rectangle {
             }
             TextButton {
                 label: @tr("close-panel-button" => "Done");
-                clicked => { Bridge.active-panel = Panel.none; }
+                clicked => { PanelBridge.pop(); }
             }
         }
 

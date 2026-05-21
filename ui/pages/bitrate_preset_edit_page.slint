@@ -10,6 +10,7 @@
 
 import { ScrollView, LineEdit } from "std-widgets.slint";
 import { Bridge, Panel, BitratePreset } from "../bridge.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import {
@@ -53,7 +54,7 @@ export component BitratePresetEditPage inherits Rectangle {
                 TextButton {
                     label: @tr("dismiss-dialog-button" => "Cancel");
                     // Return to the LIST, not the cast screen.
-                    clicked => { Bridge.active-panel = Panel.bitrate-presets; }
+                    clicked => { PanelBridge.pop(); }
                 }
                 Text {
                     text: @tr("Edit preset");
@@ -71,7 +72,7 @@ export component BitratePresetEditPage inherits Rectangle {
                             root.draft-name,
                             Math.round(root.draft-kbps),
                         );
-                        Bridge.active-panel = Panel.bitrate-presets;
+                        PanelBridge.pop();
                     }
                 }
             }
