@@ -3,7 +3,7 @@ import { Bridge, Panel, MediaBackendKind, MediaBackendState } from "../bridge.sl
 import { Theme } from "../theme.slint";
 import { PrimaryButton, DestructiveButton, TextButton } from "../components/buttons.slint";
 import { SettingsSection } from "../components/settings_rows.slint";
-import { PanelHeader } from "../components/panel_chrome.slint";
+import { PanelHeader, Card, FormRow } from "../components/panel_chrome.slint";
 
 export component MediaBackendPage inherits Rectangle {
     in-out property <bool> any-edits-pending: false;
@@ -108,21 +108,10 @@ export component MediaBackendPage inherits Rectangle {
                 if Bridge.media-backend == MediaBackendKind.gst-pop: SettingsSection {
                     title: @tr("GST-POP DAEMON");
 
-                    Rectangle {
-                        background: Theme.surface-card;
-                        border-radius: Theme.radius-card;
-                        min-height: 88px;
-                        VerticalLayout {
-                            padding-left: Theme.padding-screen;
-                            padding-right: Theme.padding-screen;
-                            padding-top: 12px;
-                            padding-bottom: 12px;
-                            spacing: 4px;
-                            Text {
-                                text: @tr("WebSocket URL");
-                                color: Theme.text-secondary;
-                                font-size: Theme.font-size-label;
-                            }
+                    Card {
+                        min-card-height: 88px;
+                        FormRow {
+                            label: @tr("WebSocket URL");
                             LineEdit {
                                 placeholder-text: "ws://127.0.0.1:9000";
                                 text <=> Bridge.gstpop-url;
@@ -131,21 +120,10 @@ export component MediaBackendPage inherits Rectangle {
                         }
                     }
 
-                    Rectangle {
-                        background: Theme.surface-card;
-                        border-radius: Theme.radius-card;
-                        min-height: 88px;
-                        VerticalLayout {
-                            padding-left: Theme.padding-screen;
-                            padding-right: Theme.padding-screen;
-                            padding-top: 12px;
-                            padding-bottom: 12px;
-                            spacing: 4px;
-                            Text {
-                                text: @tr("API key (optional)");
-                                color: Theme.text-secondary;
-                                font-size: Theme.font-size-label;
-                            }
+                    Card {
+                        min-card-height: 88px;
+                        FormRow {
+                            label: @tr("API key (optional)");
                             LineEdit {
                                 placeholder-text: @tr("Leave empty if --api-key was not set on the daemon");
                                 input-type: password;
@@ -155,21 +133,10 @@ export component MediaBackendPage inherits Rectangle {
                         }
                     }
 
-                    Rectangle {
-                        background: Theme.surface-card;
-                        border-radius: Theme.radius-card;
-                        min-height: 88px;
-                        VerticalLayout {
-                            padding-left: Theme.padding-screen;
-                            padding-right: Theme.padding-screen;
-                            padding-top: 12px;
-                            padding-bottom: 12px;
-                            spacing: 4px;
-                            Text {
-                                text: @tr("Pipeline id (gst-pop assigns \"0\" first)");
-                                color: Theme.text-secondary;
-                                font-size: Theme.font-size-label;
-                            }
+                    Card {
+                        min-card-height: 88px;
+                        FormRow {
+                            label: @tr("Pipeline id (gst-pop assigns \"0\" first)");
                             LineEdit {
                                 placeholder-text: "0";
                                 text <=> Bridge.gstpop-pipeline-id;
