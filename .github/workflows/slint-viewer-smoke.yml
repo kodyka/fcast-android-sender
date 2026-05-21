@@ -39,10 +39,17 @@ jobs:
           echo "Pinned slint version: $pinned"
 
       - name: Install xvfb and Slint runtime deps
+        # slint-viewer-linux is dynamically linked. libinput10 / libudev1 are
+        # pulled in by its winit backend; without them the loader fails with
+        # "libinput.so.10: cannot open shared object file" and exits 127.
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            xvfb libfontconfig1 libxkbcommon0 \
+            xvfb \
+            libfontconfig1 \
+            libxkbcommon0 \
+            libinput10 \
+            libudev1 \
             libxcb-render0 libxcb-shape0 libxcb-xfixes0
 
       - name: Download slint-viewer-linux v${{ steps.slint.outputs.version }}
@@ -55,6 +62,17 @@ jobs:
             -o slint-viewer.tar.gz "$URL"
           tar -xzf slint-viewer.tar.gz
           chmod +x slint-viewer/slint-viewer
+
+      - name: Diagnose shared-library deps
+        # Surface any "not found" lines so a missing runtime lib produces a
+        # clear error before we attempt to run the viewer.
+        run: |
+          set -euo pipefail
+          ldd ./slint-viewer/slint-viewer | tee ldd.out
+          if grep -q "not found" ldd.out; then
+            echo "::error::slint-viewer has unresolved shared libraries (see above)"
+            exit 1
+          fi
           ./slint-viewer/slint-viewer --version
 
       - name: Smoke-compile ui/main.slint
