@@ -340,6 +340,13 @@ export component MixerPage inherits Rectangle {
     property <bool> any-edits-pending: false;
     function reset-dirty() { root.any-edits-pending = false; }
 
+    forward-focus: panel-scope;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape { PanelBridge.pop(); return accept; }
+            return reject;
+        }
+
     VerticalLayout {
         PanelHeaderActions {
             title: @tr("Mixer");
@@ -446,4 +453,5 @@ export component MixerPage inherits Rectangle {
             }
         }
     }
+    }   // end FocusScope
 }

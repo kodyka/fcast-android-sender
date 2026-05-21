@@ -43,6 +43,16 @@ export component BitratePresetEditPage inherits Rectangle {
     height: 100%;
     background: Theme.surface-primary;
 
+    forward-focus: name-edit;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                PanelBridge.pop();
+                return accept;
+            }
+            return reject;
+        }
+
     VerticalLayout {
         // ── Header ──────────────────────────────────────────────────────
         Rectangle {
@@ -92,7 +102,7 @@ export component BitratePresetEditPage inherits Rectangle {
                         HorizontalLayout {
                             padding-left:  Theme.padding-screen;
                             padding-right: Theme.padding-screen;
-                            LineEdit {
+                            name-edit := LineEdit {
                                 placeholder-text: @tr("Preset name");
                                 text <=> root.draft-name;
                                 horizontal-stretch: 1;
@@ -114,7 +124,8 @@ export component BitratePresetEditPage inherits Rectangle {
                 }
             }
         }
-    }
+    }   // end VerticalLayout
+    }   // end FocusScope
 
     // Helper since Slint has no built-in dictionary lookup. Slint 1.16
     // pure functions don't accept `for` loops in their body (only

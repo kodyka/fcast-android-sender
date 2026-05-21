@@ -56,30 +56,42 @@ export component ReceiverContextMenu inherits Rectangle {
     drop-shadow-blur: Theme.elevation-2-blur;
     drop-shadow-color: Theme.scrim-light;
 
-    // Absorb clicks on the menu background so they don't pass through
-    // to the scrim and dismiss the menu (same pattern as ConfirmDialog).
-    TouchArea { }
+    // Trap focus; Escape dismisses the menu without selecting an item.
+    forward-focus: menu-scope;
+    menu-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                root.dismissed();
+                return accept;
+            }
+            return reject;
+        }
 
-    VerticalLayout {
-        padding-top: 4px;
-        padding-bottom: 4px;
+        // Absorb clicks on the menu background so they don't pass through
+        // to the scrim and dismiss the menu (same pattern as ConfirmDialog).
+        TouchArea { }
 
-        MenuRow {
-            label: @tr("Rename");
-            clicked => { root.rename-clicked(); }
-        }
-        MenuRow {
-            label: @tr("Set as default");
-            clicked => { root.set-default-clicked(); }
-        }
-        if root.show-disconnect: MenuRow {
-            label: @tr("Disconnect");
-            clicked => { root.disconnect-clicked(); }
-        }
-        MenuRow {
-            label: @tr("Forget receiver");
-            label-color: Theme.error;
-            clicked => { root.forget-clicked(); }
+        VerticalLayout {
+            padding-top: 4px;
+            padding-bottom: 4px;
+
+            MenuRow {
+                label: @tr("Rename");
+                clicked => { root.rename-clicked(); }
+            }
+            MenuRow {
+                label: @tr("Set as default");
+                clicked => { root.set-default-clicked(); }
+            }
+            if root.show-disconnect: MenuRow {
+                label: @tr("Disconnect");
+                clicked => { root.disconnect-clicked(); }
+            }
+            MenuRow {
+                label: @tr("Forget receiver");
+                label-color: Theme.error;
+                clicked => { root.forget-clicked(); }
+            }
         }
     }
 }

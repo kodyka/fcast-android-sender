@@ -12,6 +12,20 @@ export component SnapshotCountdown inherits Rectangle {
 
     property <int> remaining: Bridge.snapshot-secs;
 
+    // Escape cancels the countdown (same as the Cancel button).
+    forward-focus: scope;
+    scope := FocusScope {
+        width: 100%;
+        height: 100%;
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                Bridge.exit-lifecycle();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
     Timer {
         interval: 1s;
         running: root.remaining > 0;

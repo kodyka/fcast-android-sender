@@ -6,9 +6,11 @@ import { PrimaryButton, DestructiveButton, TextButton } from "../components/butt
 import { SettingsSection } from "../components/settings_rows.slint";
 import { PanelHeader, Card, FormRow } from "../components/panel_chrome.slint";
 import { StatusPill } from "../components/status_pill.slint";
+import { ConfirmDialog } from "../components/confirm_dialog.slint";
 
 export component MediaBackendPage inherits Rectangle {
     in-out property <bool> any-edits-pending: false;
+    in-out property <bool> show-discard-confirm: false;
 
     // Order MUST match the ComboBox model below.
     property <[string]> backend-labels: [
@@ -26,6 +28,21 @@ export component MediaBackendPage inherits Rectangle {
     width: 100%;
     height: 100%;
     background: Theme.surface-primary;
+
+    // Focus the panel on open; Escape triggers discard-confirm when edits are pending.
+    forward-focus: panel-scope;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                if root.any-edits-pending {
+                    root.show-discard-confirm = true;
+                    return accept;
+                }
+                PanelBridge.pop();
+                return accept;
+            }
+            return reject;
+        }
 
     VerticalLayout {
         PanelHeader {
@@ -205,5 +222,19 @@ export component MediaBackendPage inherits Rectangle {
                 }
             }
         }
+    }   // end VerticalLayout
+
+    }   // end FocusScope
+
+    if root.show-discard-confirm: ConfirmDialog {
+        title: @tr("Discard changes?");
+        body: @tr("Your unsaved settings changes will be lost.");
+        confirm-label: @tr("Discard");
+        destructive: true;
+        confirmed => {
+            root.show-discard-confirm = false;
+            PanelBridge.pop();
+        }
+        dismissed => { root.show-discard-confirm = false; }
     }
 }

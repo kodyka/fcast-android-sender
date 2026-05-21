@@ -1,6 +1,7 @@
 import { Theme }    from "../theme.slint";
 import { Bridge }   from "../bridge.slint";
 import { LineEdit } from "std-widgets.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
 
 export component ReceiverRenamePage inherits Rectangle {
     width: 100%;
@@ -12,6 +13,16 @@ export component ReceiverRenamePage inherits Rectangle {
 
     callback save(/* new-name */ string);
     callback cancel;
+
+    forward-focus: name-edit;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                root.cancel();
+                return accept;
+            }
+            return reject;
+        }
 
     VerticalLayout {
         padding: Theme.padding-screen;
@@ -55,7 +66,7 @@ export component ReceiverRenamePage inherits Rectangle {
                 font-size: Theme.font-size-label;
             }
 
-            LineEdit {
+            name-edit := LineEdit {
                 text <=> root.draft-name;
                 placeholder-text: @tr("Enter a name");
             }
@@ -83,5 +94,6 @@ export component ReceiverRenamePage inherits Rectangle {
                 }
             }
         }
-    }
+    }   // end VerticalLayout
+    }   // end FocusScope
 }

@@ -38,6 +38,16 @@ export component MacroEditPage inherits Rectangle {
     height: 100%;
     background: Theme.surface-primary;
 
+    forward-focus: name-edit;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                PanelBridge.pop();
+                return accept;
+            }
+            return reject;
+        }
+
     VerticalLayout {
         PanelHeaderActions {
             title: Bridge.macro-edit-id == ""
@@ -69,7 +79,7 @@ export component MacroEditPage inherits Rectangle {
                     color: Theme.text-secondary;
                     font-size: Theme.font-size-label;
                 }
-                LineEdit {
+                name-edit := LineEdit {
                     text <=> Bridge.draft-macro-name;
                     placeholder-text: @tr("Untitled macro");
                 }
@@ -182,7 +192,8 @@ export component MacroEditPage inherits Rectangle {
                 }
             }
         }
-    }
+    }   // end VerticalLayout
+    }   // end FocusScope
 
     // ── Add-step picker overlay ──────────────────────────────────────────
     //

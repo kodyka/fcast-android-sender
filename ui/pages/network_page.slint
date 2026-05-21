@@ -153,6 +153,13 @@ export component NetworkPage inherits Rectangle {
     height: 100%;
     background: Theme.surface-primary;
 
+    forward-focus: panel-scope;
+    panel-scope := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape { PanelBridge.pop(); return accept; }
+            return reject;
+        }
+
     VerticalLayout {
         // ── Header ──────────────────────────────────────────────────────
         PanelHeader {
@@ -198,4 +205,5 @@ export component NetworkPage inherits Rectangle {
             }
         }
     }
+    }   // end FocusScope
 }
