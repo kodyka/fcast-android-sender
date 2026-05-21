@@ -1292,84 +1292,95 @@ fn default_presets() -> Vec<crate::BitratePreset> {
 fn default_quick_actions() -> Vec<crate::QuickAction> {
     let mut actions = vec![
         crate::QuickAction {
-            id: "settings".into(),
+            kind: QuickActionKind::OpenSettings,
+            macro_id: "".into(),
+            custom_id: "".into(),
             title: "Settings".into(),
             enabled: true,
             active: false,
-            is_macro: false,
         },
         crate::QuickAction {
-            id: "debug".into(),
+            kind: QuickActionKind::OpenDebug,
+            macro_id: "".into(),
+            custom_id: "".into(),
             title: "Debug".into(),
             enabled: true,
             active: false,
-            is_macro: false,
         },
         crate::QuickAction {
-            id: "codec-test".into(),
+            kind: QuickActionKind::OpenCodecTest,
+            macro_id: "".into(),
+            custom_id: "".into(),
             title: "Codec test".into(),
             enabled: true,
             active: false,
-            is_macro: false,
         },
         crate::QuickAction {
-            id: "scan-qr".into(),
+            kind: QuickActionKind::ScanQr,
+            macro_id: "".into(),
+            custom_id: "".into(),
             title: "Scan QR".into(),
             enabled: true,
             active: false,
-            is_macro: false,
         },
         crate::QuickAction {
-            id: "record".into(),
+            kind: QuickActionKind::OpenRecording,
+            macro_id: "".into(),
+            custom_id: "".into(),
             title: "Record".into(),
             enabled: true,
             active: false,
-            is_macro: false,
         },
         crate::QuickAction {
-            id: "pair".into(),
+            kind: QuickActionKind::OpenPairing,
+            macro_id: "".into(),
+            custom_id: "".into(),
             title: "Pair".into(),
             enabled: true,
             active: false,
-            is_macro: false,
         },
         crate::QuickAction {
-            id: "bitrate".into(),
+            kind: QuickActionKind::OpenBitrate,
+            macro_id: "".into(),
+            custom_id: "".into(),
             title: "Bitrate".into(),
             enabled: true,
             active: false,
-            is_macro: false,
         },
     ];
     if cfg!(debug_assertions) {
         actions.extend([
             crate::QuickAction {
-                id: "migrated-server".into(),
+                kind: QuickActionKind::Custom,
+                macro_id: "".into(),
+                custom_id: "migrated-server".into(),
                 title: "Migrated srv".into(),
                 enabled: true,
                 active: false,
-                is_macro: false,
             },
             crate::QuickAction {
-                id: "test-getinfo".into(),
+                kind: QuickActionKind::Custom,
+                macro_id: "".into(),
+                custom_id: "test-getinfo".into(),
                 title: "GetInfo".into(),
                 enabled: true,
                 active: false,
-                is_macro: false,
             },
             crate::QuickAction {
-                id: "test-crossfade".into(),
+                kind: QuickActionKind::Custom,
+                macro_id: "".into(),
+                custom_id: "test-crossfade".into(),
                 title: "Crossfade".into(),
                 enabled: true,
                 active: false,
-                is_macro: false,
             },
             crate::QuickAction {
-                id: "test-smoke".into(),
+                kind: QuickActionKind::Custom,
+                macro_id: "".into(),
+                custom_id: "test-smoke".into(),
                 title: "Smoke Graph".into(),
                 enabled: true,
                 active: false,
-                is_macro: false,
             },
         ]);
     }
@@ -1678,19 +1689,19 @@ fn android_main(app: PlatformApp) {
     ui.global::<Bridge>().on_draft_add_step({
         let draft_macro_steps = draft_macro_steps.clone();
         let push = push_draft_steps.clone();
-        move |action_id| {
+        move |kind| {
             let mut g = draft_macro_steps.lock().unwrap();
-            let label = match action_id.as_str() {
-                "scan-qr" => "Scan QR",
-                "audio" => "Open Audio",
-                "camera" => "Open Camera",
-                "record" => "Start Recording",
-                "stop-recording" => "Stop Recording",
-                "stop-cast" => "Stop Cast",
-                _ => action_id.as_str(),
+            let label = match kind {
+                QuickActionKind::ScanQr      => "Scan QR",
+                QuickActionKind::OpenAudio   => "Open Audio",
+                QuickActionKind::OpenCamera  => "Open Camera",
+                QuickActionKind::StartRecord => "Start Recording",
+                QuickActionKind::StopRecord  => "Stop Recording",
+                QuickActionKind::StopCast    => "Stop Cast",
+                _                            => "",
             };
             g.push(MacroStep {
-                action_id: action_id.clone(),
+                kind,
                 label: label.into(),
             });
             drop(g);
@@ -1985,21 +1996,21 @@ fn android_main(app: PlatformApp) {
         vec![
             NetworkInterface {
                 name: "wlan0".into(),
-                kind: "wifi".into(),
+                kind: NetworkKind::Wifi,
                 address_v4: "192.168.1.42".into(),
                 address_v6: "fe80::1234".into(),
                 enabled: true,
             },
             NetworkInterface {
                 name: "rmnet0".into(),
-                kind: "cellular".into(),
+                kind: NetworkKind::Cellular,
                 address_v4: "10.20.30.40".into(),
                 address_v6: "".into(),
                 enabled: false,
             },
             NetworkInterface {
                 name: "lo".into(),
-                kind: "loopback".into(),
+                kind: NetworkKind::Loopback,
                 address_v4: "127.0.0.1".into(),
                 address_v6: "::1".into(),
                 enabled: true,

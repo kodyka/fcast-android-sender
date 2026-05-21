@@ -13,7 +13,7 @@
 //   draft/slint-ui/docs/astro/src/content/docs/reference/std-widgets/views/scrollview.mdx
 
 import { ScrollView, LineEdit } from "std-widgets.slint";
-import { Bridge, Panel, Macro, MacroStep } from "../bridge.slint";
+import { Bridge, Panel, Macro, MacroStep, QuickActionKind } from "../bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton, PrimaryButton, DestructiveButton } from "../components/buttons.slint";
 import { PanelHeaderActions } from "../components/panel_chrome.slint";
@@ -24,13 +24,13 @@ export component MacroEditPage inherits Rectangle {
     // Predefined catalogue of action ids that can become macro steps.
     // Still hardcoded here; a future phase will source this from
     // Bridge.quick-actions so macro steps stay in sync with the bar.
-    property <[{action-id: string, label: string}]> available-actions: [
-        { action-id: "scan-qr",        label: @tr("Scan QR") },
-        { action-id: "audio",          label: @tr("Open Audio") },
-        { action-id: "camera",         label: @tr("Open Camera") },
-        { action-id: "record",         label: @tr("Start Recording") },
-        { action-id: "stop-recording", label: @tr("Stop Recording") },
-        { action-id: "stop-cast",      label: @tr("Stop Cast") },
+    property <[{kind: QuickActionKind, label: string}]> available-actions: [
+        { kind: QuickActionKind.scan-qr,      label: @tr("Scan QR") },
+        { kind: QuickActionKind.open-audio,   label: @tr("Open Audio") },
+        { kind: QuickActionKind.open-camera,  label: @tr("Open Camera") },
+        { kind: QuickActionKind.start-record, label: @tr("Start Recording") },
+        { kind: QuickActionKind.stop-record,  label: @tr("Stop Recording") },
+        { kind: QuickActionKind.stop-cast,    label: @tr("Stop Cast") },
     ];
 
     width: 100%;
@@ -228,7 +228,7 @@ export component MacroEditPage inherits Rectangle {
                                 : transparent;
                             action-ta := TouchArea {
                                 clicked => {
-                                    Bridge.draft-add-step(action.action-id);
+                                    Bridge.draft-add-step(action.kind);
                                     root.show-add-step-picker = false;
                                 }
                             }

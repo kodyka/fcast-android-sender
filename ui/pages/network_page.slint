@@ -12,7 +12,7 @@
 //   draft/slint-ui/docs/astro/src/content/docs/guide/language/coding/repetition-and-data-models.mdx
 
 import { ScrollView } from "std-widgets.slint";
-import { Bridge, Panel, NetworkInterface } from "../bridge.slint";
+import { Bridge, Panel, NetworkInterface, NetworkKind } from "../bridge.slint";
 import { Theme } from "../theme.slint";
 import { TextButton } from "../components/buttons.slint";
 import {
@@ -58,10 +58,11 @@ component NetworkInterfaceRow inherits Rectangle {
                     background: Theme.accent-active.darker(20%);
                     Text {
                         text:
-                            root.data.kind == "wifi"     ? "W" :
-                            root.data.kind == "ethernet" ? "E" :
-                            root.data.kind == "cellular" ? "M" :
-                                                           "•";
+                            root.data.kind == NetworkKind.wifi     ? "W" :
+                            root.data.kind == NetworkKind.ethernet ? "E" :
+                            root.data.kind == NetworkKind.cellular ? "M" :
+                            root.data.kind == NetworkKind.loopback ? "L" :
+                                                                     "•";
                         color: Theme.text-primary;
                         horizontal-alignment: center;
                         vertical-alignment: center;
@@ -122,7 +123,12 @@ component NetworkInterfaceRow inherits Rectangle {
                     overflow: elide;
                 }
                 Text {
-                    text: @tr("Kind: {}", root.data.kind);
+                    text: "Kind: " + (
+                        root.data.kind == NetworkKind.wifi     ? "Wi-Fi"    :
+                        root.data.kind == NetworkKind.ethernet ? "Ethernet" :
+                        root.data.kind == NetworkKind.cellular ? "Mobile"   :
+                        root.data.kind == NetworkKind.loopback ? "Loopback" :
+                                                                 "Other");
                     color: Theme.text-secondary;
                     font-size: Theme.font-size-label;
                 }

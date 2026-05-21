@@ -60,9 +60,31 @@ export enum MediaBackendState {
     error,
 }
 
+export enum QuickActionKind {
+    open-settings,
+    open-debug,
+    open-codec-test,
+    open-recording,
+    open-pairing,
+    open-bitrate,
+    open-audio,
+    open-camera,
+    open-network,
+    open-media-backend,
+    open-mixer,
+    open-quick-actions,
+    open-cast-history,
+    scan-qr,
+    start-record,
+    stop-record,
+    stop-cast,
+    run-macro,
+    custom,
+}
+
 export struct MacroStep {
-    action-id: string,    // matches QuickAction.id
-    label:     string,    // display label
+    kind:  QuickActionKind,
+    label: string,
 }
 
 export struct Macro {
@@ -114,11 +136,12 @@ export enum Panel {
 }
 
 export struct QuickAction {
-    id:      string,
-    title:   string,
-    enabled: bool,
-    active:  bool,
-    is-macro: bool,
+    kind:      QuickActionKind,
+    macro-id:   string,
+    custom-id:  string,
+    title:     string,
+    enabled:   bool,
+    active:    bool,
 }
 
 export enum StatusSeverity { info, warning, error }
@@ -155,12 +178,20 @@ export struct CastHistoryEntry {
     status:     string,
 }
 
+export enum NetworkKind {
+    wifi,
+    ethernet,
+    cellular,
+    loopback,
+    other,
+}
+
 export struct NetworkInterface {
-    name:        string,
-    kind:        string,    // "wifi" / "ethernet" / "cellular" / "loopback"
-    address-v4:  string,
-    address-v6:  string,
-    enabled:     bool,
+    name:       string,
+    kind:       NetworkKind,
+    address-v4: string,
+    address-v6: string,
+    enabled:    bool,
 }
 
 export struct SrtSource {
@@ -232,7 +263,7 @@ export global Bridge {
     in-out property <bool>    draft-macro-enabled: true;
     in property <[MacroStep]> draft-macro-steps: [];
     callback load-draft-macro(string);                        // (macro-id)
-    callback draft-add-step(string);                          // (action-id)
+    callback draft-add-step(kind: QuickActionKind);
     callback draft-remove-step(int);                          // (step-idx)
     callback draft-move-step(int, int);                       // (from-idx, to-idx)
 
