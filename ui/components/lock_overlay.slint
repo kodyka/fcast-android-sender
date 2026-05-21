@@ -1,5 +1,5 @@
 import { Theme } from "../theme.slint";
-import { Bridge, LifecycleMode } from "../bridge.slint";
+import { Bridge } from "../bridge.slint";
 
 export component LockOverlay inherits Rectangle {
     width: 100%;
@@ -19,7 +19,7 @@ export component LockOverlay inherits Rectangle {
         triggered => {
             root.hold-elapsed += 16ms;
             if (root.hold-elapsed >= 1.5s) {
-                Bridge.lifecycle = LifecycleMode.normal;
+                Bridge.exit-lifecycle();
             }
         }
     }

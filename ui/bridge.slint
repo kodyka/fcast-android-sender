@@ -212,14 +212,14 @@ export global Bridge {
     // ── Debug log (Phase 8 / Cluster A5) ────────────────────────────────
     in property <[LogEntry]> log-entries: [];
     callback clear-log-entries();
-    in-out property <AppState> app-state: AppState.Disconnected;
+    out property <AppState> app-state: AppState.Disconnected;
     in-out property <Panel>    active-panel: Panel.none;
     // ── Banner (Phase 8 / Cluster F1) ───────────────────────────────────
     // Rust pushes a banner with severity; auto-hide is handled by
     // Rust's `flash_banner` helper (consumer is `components/info_banner.slint`).
-    in-out property <string>          banner-message:  "";
+    in property <string>              banner-message:  "";
     in-out property <bool>            banner-visible:  false;
-    in-out property <BannerSeverity>  banner-severity: BannerSeverity.info;
+    in property <BannerSeverity>      banner-severity: BannerSeverity.info;
 
     // ── Macros (Phase 8 / Cluster C4) ───────────────────────────────────
     in property <[Macro]> macros: [];
@@ -236,7 +236,7 @@ export global Bridge {
     callback draft-remove-step(int);                          // (step-idx)
     callback draft-move-step(int, int);                       // (from-idx, to-idx)
 
-    in-out property <LifecycleMode> lifecycle: LifecycleMode.normal;
+    in property <LifecycleMode> lifecycle: LifecycleMode.normal;
     in-out property <int> snapshot-secs: 5;
     in-out property <int> audio-source-idx: 0;
     in-out property <bool> audio-muted: false;
@@ -270,10 +270,7 @@ export global Bridge {
     // ── Cast history (Phase 8 / Cluster D2) ─────────────────────────────
     in property <[CastHistoryEntry]> history: [];
     in property <CastHistoryEntry> selected-history-entry;
-    callback selected-history-id-changed(string);
-    changed selected-history-id => {
-        Bridge.selected-history-id-changed(Bridge.selected-history-id);
-    }
+    callback open-history-detail(entry-id: string);
     callback clear-history();
     callback delete-history-entry(string);
     callback recast(string);                          // (entry-id)

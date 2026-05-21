@@ -1,7 +1,7 @@
 // cast_history_page.slint — Past cast sessions list (UI-only).
 //
 // Reachable from FullSettingsPage's "Cast history" row in DATA.
-// Tap a row → set Bridge.selected-history-id, open Panel.cast-history-detail.
+// Tap a row → call Bridge.open-history-detail(id), open Panel.cast-history-detail.
 // "Clear all" → ConfirmDialog (Phase 19) → empty mock-history on confirm.
 //
 // Slint docs ref:
@@ -88,7 +88,7 @@ export component CastHistoryPage inherits Rectangle {
 
                     row-ta := TouchArea {
                         clicked => {
-                            Bridge.selected-history-id = entry.id;
+                            Bridge.open-history-detail(entry.id);
                             Bridge.active-panel = Panel.cast-history-detail;
                         }
                     }

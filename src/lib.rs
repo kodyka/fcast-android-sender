@@ -1940,26 +1940,22 @@ fn android_main(app: PlatformApp) {
         }
     });
 
-    // Push selected-history-entry whenever the id changes. Slint does NOT
-    // auto-generate on_<property>_changed; the `changed` handler in
-    // bridge.slint re-emits via the explicit `selected-history-id-changed`
-    // callback bound below.
+    // Push selected-history-entry when a row is tapped. Uses the explicit
+    // open-history-detail callback — no `changed` re-emit needed.
     //
-    // The callback fires on the Slint UI thread, so we use `ui_weak.upgrade()`
-    // (synchronous) instead of `upgrade_in_event_loop` (deferred). The
-    // consumer page sets `Bridge.active-panel = Panel.cast-history-detail`
-    // immediately after setting the id; a deferred property write would
-    // render the detail page one frame with stale/empty data.
-    ui.global::<Bridge>().on_selected_history_id_changed({
+    // Called synchronously (Slint UI thread) so the detail page always
+    // renders with fresh data on the same frame it becomes visible.
+    ui.global::<Bridge>().on_open_history_detail({
         let history = history.clone();
         let ui_weak = ui.as_weak();
-        move |id: slint::SharedString| {
-            let id = id.to_string();
+        move |entry_id: slint::SharedString| {
+            let id = entry_id.to_string();
             let entry = history.lock().iter().find(|e| e.id == id).cloned();
             let Some(entry) = entry else {
                 return;
             };
             if let Some(ui) = ui_weak.upgrade() {
+                ui.global::<Bridge>().set_selected_history_id(entry_id);
                 ui.global::<Bridge>().set_selected_history_entry(entry);
             }
         }

@@ -8,10 +8,9 @@
 //    only through `open_panel(panel: Panel)` in lib.rs.
 //
 // 2. Bridge.lifecycle — Rust is the authoritative writer (set_lifecycle).
-//    Slint writes directly only from inside the LockOverlay /
-//    StealthOverlay / SnapshotCountdown exit paths. Settings rows that
-//    *engage* a lifecycle mode go through Bridge.engage-lock /
-//    engage-stealth / start-snapshot-countdown callbacks.
+//    Slint exit paths call Bridge.exit-lifecycle(); no direct property writes.
+//    Settings rows that *engage* a lifecycle mode go through
+//    Bridge.engage-lock / engage-stealth / start-snapshot-countdown callbacks.
 //
 // 3. Bridge.app-state — Slint writes ONLY via Bridge.change-state(to).
 //    No Slint-side direct writes (`Bridge.app-state = ...`). Rust writes
