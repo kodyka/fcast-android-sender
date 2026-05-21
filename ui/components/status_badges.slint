@@ -21,9 +21,9 @@ import { Bridge, StatusItem, StatusSeverity } from "../bridge.slint";
 
 // Internal sub-component — not exported. Two Text children inside a pill.
 component Badge inherits Rectangle {
-    in property <string> icon-glyph;
-    in property <string> value;
-    in property <color>  fg: Theme.text-secondary;
+    in property <string>         icon-glyph;
+    in property <string>         value;
+    in property <StatusSeverity> severity: StatusSeverity.info;
 
     height: 22px;
     border-radius: self.height / 2;
@@ -31,6 +31,14 @@ component Badge inherits Rectangle {
 
     accessible-role:  text;
     accessible-label: root.icon-glyph + " " + root.value;
+
+    private property <color> fg: Theme.text-secondary;
+
+    states [
+        error   when root.severity == StatusSeverity.error   : { fg: Theme.error-fg;     }
+        warning when root.severity == StatusSeverity.warning : { fg: Theme.warning-fg;   }
+        info    when root.severity == StatusSeverity.info    : { fg: Theme.text-secondary; }
+    ]
 
     HorizontalLayout {
         padding-left:  8px;
@@ -58,9 +66,7 @@ export component StatusBadgesRow inherits Rectangle {
         for item in Bridge.status-items: Badge {
             icon-glyph: item.icon-glyph;
             value: item.value;
-            fg: item.severity == StatusSeverity.error   ? Theme.error-fg
-              : item.severity == StatusSeverity.warning ? Theme.warning-fg
-              :                                            Theme.text-secondary;
+            severity: item.severity;
         }
     }
 }

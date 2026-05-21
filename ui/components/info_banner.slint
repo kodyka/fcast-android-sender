@@ -40,14 +40,19 @@ export component InfoBanner inherits Rectangle {
 
     accessible-role:  text;
     accessible-label: root.message;
-    background: root.severity == BannerSeverity.error
-                  ? Theme.error
-              : root.severity == BannerSeverity.warning
-                  ? Theme.warning
-              : root.severity == BannerSeverity.success
-                  ? Theme.success
-              : Theme.accent-active.darker(20%);
-    animate height { duration: 200ms; easing: ease-out; }
+
+    private property <color> banner-bg: Theme.accent-active.darker(20%);
+
+    states [
+        error   when root.severity == BannerSeverity.error   : { banner-bg: Theme.error;                    }
+        warning when root.severity == BannerSeverity.warning : { banner-bg: Theme.warning;                  }
+        success when root.severity == BannerSeverity.success : { banner-bg: Theme.success;                  }
+        info    when root.severity == BannerSeverity.info    : { banner-bg: Theme.accent-active.darker(20%); }
+    ]
+
+    background: root.banner-bg;
+    animate height     { duration: 200ms; easing: ease-out;    }
+    animate background { duration: 150ms; easing: ease-in-out; }
 
     HorizontalLayout {
         padding-left:  Theme.padding-screen;

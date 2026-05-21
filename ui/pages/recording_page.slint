@@ -102,11 +102,13 @@ export component RecordingPage inherits Rectangle {
                             width: 96px;
                             height: 96px;
                             border-radius: 48px;
-                            background:
-                                Recording.state == RecordingState.idle      ? Theme.recording-dot
-                                : Recording.state == RecordingState.recording ? Theme.recording-dot
-                                : Recording.state == RecordingState.paused    ? Theme.accent-active
-                                : Theme.surface-primary;
+                            background: Theme.surface-primary;
+
+                            states [
+                                idle      when Recording.state == RecordingState.idle      : { background: Theme.recording-dot; }
+                                recording when Recording.state == RecordingState.recording : { background: Theme.recording-dot; }
+                                paused    when Recording.state == RecordingState.paused    : { background: Theme.accent-active; }
+                            ]
                             // Inner glyph: red dot (idle), white square (recording),
                             // chevron (paused), spinner placeholder (finalizing).
                             Rectangle {

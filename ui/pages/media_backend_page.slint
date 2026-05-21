@@ -4,6 +4,7 @@ import { Theme } from "../theme.slint";
 import { PrimaryButton, DestructiveButton, TextButton } from "../components/buttons.slint";
 import { SettingsSection } from "../components/settings_rows.slint";
 import { PanelHeader, Card, FormRow } from "../components/panel_chrome.slint";
+import { StatusPill } from "../components/status_pill.slint";
 
 export component MediaBackendPage inherits Rectangle {
     in-out property <bool> any-edits-pending: false;
@@ -25,55 +26,7 @@ export component MediaBackendPage inherits Rectangle {
                 spacing: Theme.spacing-default;
                 padding: Theme.padding-screen;
 
-                Rectangle {
-                    background: Bridge.media-backend-state == MediaBackendState.error
-                        ? Theme.error.darker(35%)
-                        : Theme.surface-card;
-                    border-radius: Theme.radius-card;
-                    min-height: 56px;
-                    HorizontalLayout {
-                        padding: Theme.padding-screen;
-                        spacing: 8px;
-                        Rectangle {
-                            width: 12px;
-                            height: 12px;
-                            border-radius: 6px;
-                            background:
-                                Bridge.media-backend-state == MediaBackendState.ready    ? Theme.success :
-                                Bridge.media-backend-state == MediaBackendState.starting ? Theme.warning :
-                                Bridge.media-backend-state == MediaBackendState.probing  ? Theme.warning :
-                                Bridge.media-backend-state == MediaBackendState.error    ? Theme.error-fg :
-                                Theme.text-disabled;
-                            y: (parent.height - self.height) / 2;
-                        }
-                        VerticalLayout {
-                            spacing: 2px;
-                            horizontal-stretch: 1;
-                            Text {
-                                text:
-                                    Bridge.media-backend-state == MediaBackendState.ready    ? @tr("Ready") :
-                                    Bridge.media-backend-state == MediaBackendState.starting ? @tr("Starting gst-pop service\u{2026}") :
-                                    Bridge.media-backend-state == MediaBackendState.probing  ? @tr("Probing\u{2026}") :
-                                    Bridge.media-backend-state == MediaBackendState.error    ? @tr("Error") :
-                                    @tr("Disconnected");
-                                color: Theme.text-primary;
-                                font-size: Theme.font-size-body;
-                            }
-                            if Bridge.media-backend-status-text != "": Text {
-                                text: Bridge.media-backend-status-text;
-                                color: Theme.text-secondary;
-                                font-size: Theme.font-size-label;
-                                wrap: word-wrap;
-                            }
-                            if Bridge.media-backend-error-text != "": Text {
-                                text: Bridge.media-backend-error-text;
-                                color: Theme.error-fg;
-                                font-size: Theme.font-size-label;
-                                wrap: word-wrap;
-                            }
-                        }
-                    }
-                }
+                StatusPill { }
 
                 SettingsSection {
                     title: @tr("BACKEND");

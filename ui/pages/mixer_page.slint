@@ -5,6 +5,21 @@ import { PrimaryButton, TextButton, DestructiveButton } from "../components/butt
 import { SettingsSection, SettingsSliderRow } from "../components/settings_rows.slint";
 import { PanelHeaderActions } from "../components/panel_chrome.slint";
 
+component MixerStateChip inherits Text {
+    in property <MixerState> state: MixerState.idle;
+    in property <string>     running-label: @tr("running");
+    font-size: Theme.font-size-label;
+    vertical-alignment: center;
+
+    states [
+        idle     when root.state == MixerState.idle     : { text: @tr("idle");          color: Theme.text-secondary; }
+        starting when root.state == MixerState.starting : { text: @tr("starting");      color: Theme.text-secondary; }
+        running  when root.state == MixerState.running  : { text: root.running-label;   color: Theme.success;        }
+        stopping when root.state == MixerState.stopping : { text: @tr("stopping");      color: Theme.text-secondary; }
+        error    when root.state == MixerState.error    : { text: @tr("error");         color: Theme.error-fg;       }
+    ]
+}
+
 component SrtSourceRow inherits Rectangle {
     in-out property <SrtSource> data;
     in property <string> title;
@@ -31,20 +46,7 @@ component SrtSourceRow inherits Rectangle {
                 vertical-alignment: center;
                 horizontal-stretch: 1;
             }
-            Text {
-                text:
-                    root.data.state == MixerState.idle ? @tr("idle")
-                    : root.data.state == MixerState.starting ? @tr("starting")
-                    : root.data.state == MixerState.running ? @tr("running")
-                    : root.data.state == MixerState.stopping ? @tr("stopping")
-                    : @tr("error");
-                color:
-                    root.data.state == MixerState.running ? Theme.success
-                    : root.data.state == MixerState.error ? Theme.error-fg
-                    : Theme.text-secondary;
-                font-size: Theme.font-size-label;
-                vertical-alignment: center;
-            }
+            MixerStateChip { state: root.data.state; }
             Switch {
                 checked <=> root.data.enabled;
                 toggled() => { root.edited(); }
@@ -264,19 +266,9 @@ component RtmpDestinationRow inherits Rectangle {
                 vertical-alignment: center;
                 horizontal-stretch: 1;
             }
-            Text {
-                text:
-                    Bridge.rtmp-destination.state == MixerState.running ? @tr("live")
-                    : Bridge.rtmp-destination.state == MixerState.starting ? @tr("starting")
-                    : Bridge.rtmp-destination.state == MixerState.stopping ? @tr("stopping")
-                    : Bridge.rtmp-destination.state == MixerState.error ? @tr("error")
-                    : @tr("idle");
-                color:
-                    Bridge.rtmp-destination.state == MixerState.running ? Theme.success
-                    : Bridge.rtmp-destination.state == MixerState.error ? Theme.error-fg
-                    : Theme.text-secondary;
-                font-size: Theme.font-size-label;
-                vertical-alignment: center;
+            MixerStateChip {
+                state: Bridge.rtmp-destination.state;
+                running-label: @tr("live");
             }
             Switch {
                 checked <=> Bridge.rtmp-destination.enabled;
@@ -350,19 +342,9 @@ export component MixerPage inherits Rectangle {
     VerticalLayout {
         PanelHeaderActions {
             title: @tr("Mixer");
-            Text {
-                text:
-                    Bridge.mixer-state == MixerState.running ? @tr("live")
-                    : Bridge.mixer-state == MixerState.starting ? @tr("starting")
-                    : Bridge.mixer-state == MixerState.stopping ? @tr("stopping")
-                    : Bridge.mixer-state == MixerState.error ? @tr("error")
-                    : @tr("idle");
-                color:
-                    Bridge.mixer-state == MixerState.running ? Theme.success
-                    : Bridge.mixer-state == MixerState.error ? Theme.error-fg
-                    : Theme.text-secondary;
-                font-size: Theme.font-size-label;
-                vertical-alignment: center;
+            MixerStateChip {
+                state: Bridge.mixer-state;
+                running-label: @tr("live");
             }
             TextButton {
                 label: @tr("close-panel-button" => "Done");
