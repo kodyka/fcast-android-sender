@@ -24,6 +24,16 @@ export component QuickActionButton inherits Rectangle {
         : (ta.pressed ? Theme.surface-card.brighter(20%) : Theme.surface-card);
     opacity: root.action.enabled ? 1.0 : 0.45;
 
+    accessible-role:    button;
+    accessible-label:   root.action.is-macro
+        ? @tr("macro-quick-action-a11y", "Run macro: {}", root.action.title)
+        : root.action.title;
+    accessible-enabled: root.action.enabled;
+    accessible-checked: root.action.active;
+    accessible-action-default => {
+        if root.action.enabled { root.invoked(root.action.id); }
+    }
+
     ta := TouchArea {
         enabled: root.action.enabled;
         clicked => { root.invoked(root.action.id); }

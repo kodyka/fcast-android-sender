@@ -37,6 +37,9 @@ export component InfoBanner inherits Rectangle {
 
     height: root.shown ? 40px : 0px;
     clip: true;
+
+    accessible-role:  text;
+    accessible-label: root.message;
     background: root.severity == BannerSeverity.error
                   ? Theme.error
               : root.severity == BannerSeverity.warning

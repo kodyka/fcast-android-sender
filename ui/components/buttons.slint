@@ -16,13 +16,18 @@ export component PrimaryButton inherits Rectangle {
     background: ta.pressed ? Theme.accent-pressed : Theme.accent;
     opacity: root.enabled ? 1.0 : 0.45;
 
+    accessible-role:          button;
+    accessible-label:         root.label;
+    accessible-enabled:       root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+
     ta := TouchArea {
         enabled: root.enabled;
         clicked => { root.clicked(); }
     }
     Text {
         text: root.label;
-        color: Theme.text-primary;
+        color: Theme.text-on-accent;
         horizontal-alignment: center;
         vertical-alignment: center;
         font-size: Theme.font-size-body;
@@ -38,6 +43,11 @@ export component TextButton inherits Rectangle {
     height: Theme.row-height;
     background: transparent;
     opacity: root.enabled ? 1.0 : 0.45;
+
+    accessible-role:          button;
+    accessible-label:         root.label;
+    accessible-enabled:       root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
 
     ta := TouchArea {
         enabled: root.enabled;
@@ -62,13 +72,18 @@ export component DestructiveButton inherits Rectangle {
     background: ta.pressed ? Theme.error.darker(20%) : Theme.error;
     opacity: root.enabled ? 1.0 : 0.45;
 
+    accessible-role:          button;
+    accessible-label:         @tr("destructive-button-a11y-label", "{} (destructive)", root.label);
+    accessible-enabled:       root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+
     ta := TouchArea {
         enabled: root.enabled;
         clicked => { root.clicked(); }
     }
     Text {
         text: root.label;
-        color: Theme.text-primary;
+        color: Theme.text-on-error;
         horizontal-alignment: center;
         vertical-alignment: center;
     }

@@ -19,6 +19,10 @@ component MenuRow inherits Rectangle {
     height: 44px;
     background: transparent;
 
+    accessible-role:          button;
+    accessible-label:         root.label;
+    accessible-action-default => { root.clicked(); }
+
     HorizontalLayout {
         padding-left:  16px;
         padding-right: 16px;

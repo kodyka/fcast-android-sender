@@ -7,6 +7,9 @@ export component SnapshotCountdown inherits Rectangle {
     height: 100%;
     background: Theme.surface-overlay;
 
+    accessible-role:  text;
+    accessible-label: @tr("snapshot-countdown-a11y", "Casting in {} seconds. Press Cancel to abort.", root.remaining);
+
     property <int> remaining: Bridge.snapshot-secs;
 
     Timer {

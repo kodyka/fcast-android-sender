@@ -6,6 +6,9 @@ export component LockOverlay inherits Rectangle {
     height: 100%;
     background: Theme.surface-overlay;
 
+    accessible-role:  text;
+    accessible-label: @tr("lock-overlay-a11y", "UI locked. Tap and hold for 1.5 seconds to unlock.");
+
     // Track hold duration
     property <duration> hold-elapsed: 0s;
     property <float> hold-progress: Math.clamp(root.hold-elapsed / 1.5s, 0.0, 1.0);

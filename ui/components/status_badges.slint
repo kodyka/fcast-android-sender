@@ -29,6 +29,9 @@ component Badge inherits Rectangle {
     border-radius: self.height / 2;
     background: Theme.surface-overlay;
 
+    accessible-role:  text;
+    accessible-label: root.icon-glyph + " " + root.value;
+
     HorizontalLayout {
         padding-left:  8px;
         padding-right: 8px;

@@ -17,6 +17,9 @@ export component IconAndText inherits HorizontalLayout {
     in property <length> font-size:   Theme.font-size-body;
     spacing: 6px;
 
+    accessible-role:  text;
+    accessible-label: root.label;
+
     if root.icon != "": Text {
         text: root.icon;
         color: root.label-color;

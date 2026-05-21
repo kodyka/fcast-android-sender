@@ -36,6 +36,9 @@ export component ConfirmDialog inherits Rectangle {
     height: 100%;
     background: Theme.scrim-strong;
 
+    accessible-role:  text;
+    accessible-label: root.title + ". " + root.body;
+
     // Outer scrim TouchArea: tapping outside the dialog dismisses.
     TouchArea {
         clicked => { root.dismissed(); }
