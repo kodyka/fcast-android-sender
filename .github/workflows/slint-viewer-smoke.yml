@@ -1,0 +1,84 @@
+name: slint-viewer-smoke
+
+# Smoke-compile ui/main.slint with the official slint-viewer binary that
+# matches the Slint version pinned in Cargo.toml. Catches breaks in the
+# .slint dependency graph that don't surface in the Rust build (the build
+# only includes `ui/main.slint`, but the viewer compiles the same root and
+# transitively imports every page/component reached from it).
+#
+# slint-viewer is interactive: it exits with -1 (255) on a compile error
+# and otherwise opens a window. We run it under xvfb-run with a short
+# `timeout` — a non-255 exit means compilation succeeded.
+
+on:
+  pull_request:
+    paths:
+      - 'ui/**'
+      - 'Cargo.toml'
+      - '.github/workflows/slint-viewer-smoke.yml'
+
+jobs:
+  slint-viewer-smoke:
+    name: Compile ui/main.slint with slint-viewer
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read pinned Slint version from Cargo.toml
+        id: slint
+        run: |
+          set -euo pipefail
+          pinned=$(awk -F'"' '/^slint = / { print $2 }' Cargo.toml | head -1)
+          if [ -z "$pinned" ]; then
+            echo "::error::could not parse slint version from Cargo.toml" >&2
+            exit 1
+          fi
+          echo "version=$pinned" >> "$GITHUB_OUTPUT"
+          echo "Pinned slint version: $pinned"
+
+      - name: Install xvfb and Slint runtime deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            xvfb libfontconfig1 libxkbcommon0 \
+            libxcb-render0 libxcb-shape0 libxcb-xfixes0
+
+      - name: Download slint-viewer-linux v${{ steps.slint.outputs.version }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.slint.outputs.version }}"
+          URL="https://github.com/slint-ui/slint/releases/download/v${VERSION}/slint-viewer-linux.tar.gz"
+          echo "Downloading $URL"
+          curl -fL --retry 5 --retry-all-errors --connect-timeout 30 \
+            -o slint-viewer.tar.gz "$URL"
+          tar -xzf slint-viewer.tar.gz
+          chmod +x slint-viewer/slint-viewer
+          ./slint-viewer/slint-viewer --version
+
+      - name: Smoke-compile ui/main.slint
+        # Exit-code map (see tools/viewer/README.md upstream):
+        #   255 (-1)  → .slint compile error (FAIL)
+        #   124       → GNU `timeout` reached: viewer compiled + opened a window (PASS)
+        #   137       → SIGKILL from --kill-after (PASS — compile already succeeded)
+        #   0 / 1     → clean window close / dialog cancel (won't happen here, treat as PASS)
+        #   other     → unexpected (FAIL)
+        run: |
+          set -uo pipefail
+          xvfb-run -a timeout --kill-after=2 8 \
+            ./slint-viewer/slint-viewer ui/main.slint
+          EXIT=$?
+          case "$EXIT" in
+            255)
+              echo "::error::ui/main.slint failed to compile (slint-viewer exit -1)"
+              exit 1
+              ;;
+            0|1|124|137|143)
+              echo "✓ ui/main.slint compiled successfully (slint-viewer exit=$EXIT)"
+              ;;
+            *)
+              echo "::error::unexpected slint-viewer exit code: $EXIT"
+              exit 1
+              ;;
+          esac
