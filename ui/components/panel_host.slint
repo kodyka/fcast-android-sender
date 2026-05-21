@@ -18,8 +18,8 @@ import { SafeArea } from "../state/safe_area.slint";
 
 export component PanelHost inherits Rectangle {
     background: transparent;
-    width: parent.width;
-    height: parent.height;
+    width: 100%;
+    height: 100%;
 
     visible: PanelBridge.active != Panel.none;
 

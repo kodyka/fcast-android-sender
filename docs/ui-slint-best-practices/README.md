@@ -53,8 +53,8 @@ list is independent except where called out.
   preserves their signatures; the Rust changes shown there are minimal
   wrappers, not behavior changes.
 - **Not a Slint version upgrade.** Everything in this guide is valid
-  Slint 1.15.1 (the version pinned by `Cargo.toml` via the FUTO fork).
-  Anything that only works on 1.16+/1.17+ is flagged inline.
+  Slint 1.16.0 (the version pinned by `Cargo.toml`).
+  Anything that only works on 1.17+ is flagged inline.
 
 ## Estimated effort
 

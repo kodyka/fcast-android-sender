@@ -10,6 +10,7 @@ import { Theme } from "../theme.slint";
 import { PrimaryButton } from "../components/buttons.slint";
 import { ReceiverContextMenu } from "../components/receiver_context_menu.slint";
 import { ConfirmDialog }       from "../components/confirm_dialog.slint";
+import { LongPressTouchArea } from "../components/long_press_touch_area.slint";
 export component ConnectView inherits Rectangle {
     // Context menu state.
     in-out property <bool>   show-context-menu: false;
@@ -51,7 +52,7 @@ export component ConnectView inherits Rectangle {
             spacing: Theme.spacing-default;
             for device[idx] in Bridge.devices: Rectangle {
                 height: Theme.row-height + 18px;
-                ta := TouchArea {
+                ta := LongPressTouchArea {
                     long-pressed => {
                         root.context-receiver-id   = device.id;
                         root.context-receiver-name = device.name;

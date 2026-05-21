@@ -47,9 +47,9 @@ component AlignmentSquare inherits Rectangle {
 export component QrPlaceholder inherits Rectangle {
     in property <string> label: @tr("qr-placeholder-label", "(QR preview)");
 
-    // Responsive: fills up to 80% of the available width, clamped between the
-    // Theme tokens so it looks right on both phones and tablets.
-    width:  clamp(parent.width * 0.8, Theme.qr-square-min, Theme.qr-square-max);
+    // Default size. Responsive overrides are applied at the usage site (e.g., in pairing_page.slint)
+    // using page-relative metrics to prevent compile-time 'parent' errors.
+    width:  Theme.qr-square-min;
     height: self.width;
     background: QrTokens.module-light;
     border-radius: Theme.radius-card;

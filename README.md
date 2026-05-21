@@ -147,6 +147,55 @@ They are pinned as Git dependencies to `kodyka/fcast` commit
 
 To bump the SDK pin, see [docs/cross-repo-sync.md](docs/cross-repo-sync.md).
 
+## UI development
+
+For designing and testing the Slint UI without booting an Android emulator or physical device, you can run and preview the UI components locally.
+
+### 1. Verify `slint-viewer` Version
+To prevent confusing errors due to version mismatch, ensure your local `slint-viewer` version matches the Slint dependency pinned in `Cargo.toml` (`1.16.0`).
+
+You can verify this using the provided script:
+```console
+$ bash scripts/check-slint-viewer.sh
+```
+
+### 2. Previewing the UI via `nix-shell` (Recommended)
+You can run `slint-viewer` in an isolated environment without globally installing it:
+
+```console
+# Preview the whole app (MainWindow)
+$ nix-shell -p slint-viewer --run "slint-viewer ui/main.slint --auto-reload"
+
+# Preview a single page in isolation (e.g. MediaBackendPage)
+$ nix-shell -p slint-viewer --run "slint-viewer ui/pages/media_backend_page.slint --component MediaBackendPage"
+```
+
+### 3. Alternative Local Cargo Installation
+If you prefer to install it globally via Cargo, run:
+```console
+$ cargo install slint-viewer --version "=1.16.0" --force
+```
+Then launch it using:
+```console
+$ slint-viewer ui/main.slint --auto-reload
+```
+
+### 4. Running UI Validation and Headless Tests
+Run the automated UI validation suite (which checks for raw hex colors, hardcoded sizes, nested layout issues, etc.) and headless snapshot tests:
+
+```console
+# Run local pre-commit checks and validation scripts
+$ ci/ui-validate.sh
+
+# Run headless UI tests (using i-slint-backend-testing)
+$ cargo test --test ui_snapshots
+```
+
+To refresh accessibility golden files if they legitimately changed:
+```console
+$ UI_SNAPSHOT_REFRESH=1 cargo test --test ui_snapshots
+```
+
 ## License
 
 MIT

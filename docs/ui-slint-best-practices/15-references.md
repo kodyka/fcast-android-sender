@@ -10,13 +10,14 @@ and which guide step relies on each.
 - Upstream repo: [`slint-ui/slint`](https://github.com/slint-ui/slint)
 - Pinned commit: `d79203f` (2026-05-02)
 - Upstream Slint version on that commit: **v1.17.0**
-- FCast Slint version pin: **v1.15.1** (FUTO fork)
+- FCast Slint version pin: **v1.16.0**
 - See [`draft/slint-ui/docs/_MIRROR.md`](../../draft/slint-ui/docs/_MIRROR.md)
   for the full mirror contract and version-skew rules.
 
 The pages are forward-compatible: every cited best-practice exists in
-v1.15.1 unless flagged inline. v1.16+/1.17+-only features are called
-out per-step.
+v1.16.0. v1.17+-only features are called out per-step. Notes that say
+"1.15.1 workaround" describe approaches superseded by 1.16 APIs; they
+remain in the step files as historical context.
 
 ## Language coding
 
@@ -88,13 +89,13 @@ When the mirror is refreshed:
 
 ## Tooling versions used while authoring
 
-- `slint = "1.15.1"` (FCast pin via `Cargo.toml`)
-- `slint-viewer 1.15.1`
-- `i-slint-backend-testing 1.15.1`
-- `slint-tr-extractor 1.15.1`
+- `slint = "1.16.0"` (FCast pin via `Cargo.toml`)
+- `slint-viewer 1.16.0` — run without installing: `nix-shell -p slint-viewer`
+- `i-slint-backend-testing 1.16.0` (already in `[dev-dependencies]`)
+- `slint-tr-extractor 1.16.0`
 
-If a future step depends on a 1.16+/1.17 feature, the step file flags
-it inline ("**Slint 1.16+:**") and provides a 1.15-compatible fallback.
+If a future step depends on a 1.17+ feature, the step file flags
+it inline ("**Slint 1.17+:**") and documents the 1.16-compatible approach.
 
 ## Out of scope
 

@@ -79,10 +79,7 @@ export component MediaBackendPage inherits Rectangle {
                                 model: root.backend-labels;
                                 current-index: backend-to-index(Bridge.media-backend);
                                 selected(value) => {
-                                    for label[i] in root.backend-labels:
-                                        if label == value {
-                                            Bridge.media-backend = backend-from-index(i);
-                                        }
+                                    Bridge.media-backend = backend-from-index(self.current-index);
                                     root.any-edits-pending = true;
                                 }
                             }

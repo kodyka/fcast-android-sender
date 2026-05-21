@@ -1,0 +1,25 @@
+// long_press_touch_area.slint — Custom TouchArea that emits a long-pressed callback.
+export component LongPressTouchArea inherits TouchArea {
+    in property <duration> long-press-threshold: 600ms;
+    callback long-pressed();
+
+    property <bool> armed: self.pressed;
+    property <duration> elapsed: 0s;
+
+    // Single Timer instance, scoped to the component.
+    Timer {
+        interval: 16ms;
+        running: root.armed && root.elapsed < root.long-press-threshold;
+        triggered => {
+            root.elapsed += 16ms;
+            if (root.elapsed >= root.long-press-threshold) {
+                root.long-pressed();
+                root.armed = false;
+            }
+        }
+    }
+    changed pressed => {
+        root.elapsed = 0s;
+        root.armed = self.pressed;
+    }
+}
