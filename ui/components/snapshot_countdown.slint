@@ -14,11 +14,9 @@ export component SnapshotCountdown inherits Rectangle {
 
     Timer {
         interval: 1s;
-        running: true;
+        running: root.remaining > 0;
         triggered => {
-            if (root.remaining > 0) {
-                root.remaining -= 1;
-            }
+            root.remaining -= 1;
             if (root.remaining <= 0) {
                 Bridge.exit-lifecycle();
             }

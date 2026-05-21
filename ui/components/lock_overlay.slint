@@ -9,29 +9,24 @@ export component LockOverlay inherits Rectangle {
     accessible-role:  text;
     accessible-label: @tr("lock-overlay-a11y", "UI locked. Tap and hold for 1.5 seconds to unlock.");
 
-    // Track hold duration
-    property <duration> hold-elapsed: 0s;
-    property <float> hold-progress: Math.clamp(root.hold-elapsed / 1.5s, 0.0, 1.0);
+    property <float> hold-progress: 0.0;
 
-    Timer {
-        interval: 16ms;
-        running: hold-area.pressed;
-        triggered => {
-            root.hold-elapsed += 16ms;
-            if (root.hold-elapsed >= 1.5s) {
-                Bridge.exit-lifecycle();
-            }
+    // Asymmetric animation: 1.5 s to fill (hold), 200 ms to snap back (release).
+    states [
+        held     when hold-area.pressed  : { hold-progress: 1.0; in { animate hold-progress { duration: 1.5s;  easing: linear;   } } }
+        released when !hold-area.pressed : { hold-progress: 0.0; in { animate hold-progress { duration: 200ms; easing: ease-out; } } }
+    ]
+
+    // Fires on every animated frame; only exits when the full 1.5 s completes.
+    changed hold-progress => {
+        if (root.hold-progress >= 1.0 && hold-area.pressed) {
+            Bridge.exit-lifecycle();
         }
     }
 
     hold-area := TouchArea {
         width: 100%;
         height: 100%;
-        changed pressed => {
-            if (!self.pressed) {
-                root.hold-elapsed = 0s;
-            }
-        }
 
         Rectangle {
             width: 240px;
@@ -68,7 +63,7 @@ export component LockOverlay inherits Rectangle {
                     wrap: word-wrap;
                 }
 
-                // Progress bar
+                // Progress bar — width binds to animated hold-progress directly.
                 Rectangle {
                     width: 80%;
                     height: 8px;

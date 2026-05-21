@@ -50,27 +50,12 @@ export component ConnectView inherits Rectangle {
             spacing: Theme.spacing-default;
             for device[idx] in Bridge.devices: Rectangle {
                 height: Theme.row-height + 18px;
-                property <bool> lp-armed: false;
-                Timer {
-                    interval: 600ms;
-                    running: parent.lp-armed;
-                    triggered => {
-                        parent.lp-armed = false;
-                        // Long press captures the stable receiver id for actions
-                        // and the display name for the context menu title.
-                        root.context-receiver-id = device.id;
-                        root.context-receiver-name = device.name;
-                        root.context-menu-y = (parent.height * idx) + 100px;
-                        root.show-context-menu = true;
-                    }
-                }
                 ta := TouchArea {
-                    changed pressed => {
-                        if self.pressed {
-                            parent.lp-armed = true;
-                        } else {
-                            parent.lp-armed = false;
-                        }
+                    long-pressed => {
+                        root.context-receiver-id   = device.id;
+                        root.context-receiver-name = device.name;
+                        root.context-menu-y        = (parent.height * idx) + 100px;
+                        root.show-context-menu     = true;
                     }
                     clicked => {
                         Bridge.connect-receiver(device.id);
