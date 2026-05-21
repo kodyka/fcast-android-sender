@@ -120,7 +120,7 @@ export component FullSettingsPage inherits Rectangle {
                     title: @tr("RECEIVER");
                     SettingsValueRow {
                         title: @tr("Discovered receivers");
-                        value: @tr("{n} receiver found" | "{n} receivers found" % 3);
+                        value: @tr("{n} receiver found" | "{n} receivers found" % Bridge.devices.length);
                         // UI-only — would open the connect page.
                         clicked => { /* placeholder */ }
                     }

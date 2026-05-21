@@ -9,6 +9,19 @@ import { StatusPill } from "../components/status_pill.slint";
 export component MediaBackendPage inherits Rectangle {
     in-out property <bool> any-edits-pending: false;
 
+    // Order MUST match the ComboBox model below.
+    property <[string]> backend-labels: [
+        @tr("media-backend-engine-migration", "Migration (in-process)"),
+        @tr("media-backend-engine-gstpop",    "gst-pop (WebSocket)"),
+    ];
+
+    pure function backend-from-index(i: int) -> MediaBackendKind {
+        return i == 0 ? MediaBackendKind.migration : MediaBackendKind.gst-pop;
+    }
+    pure function backend-to-index(k: MediaBackendKind) -> int {
+        return k == MediaBackendKind.migration ? 0 : 1;
+    }
+
     width: 100%;
     height: 100%;
     background: Theme.surface-primary;
@@ -45,12 +58,13 @@ export component MediaBackendPage inherits Rectangle {
                                 horizontal-stretch: 1;
                             }
                             ComboBox {
-                                model: [@tr("Migration (in-process)"), @tr("gst-pop (WebSocket)")];
-                                current-index: Bridge.media-backend == MediaBackendKind.migration ? 0 : 1;
+                                model: root.backend-labels;
+                                current-index: backend-to-index(Bridge.media-backend);
                                 selected(value) => {
-                                    Bridge.media-backend = value == @tr("Migration (in-process)")
-                                        ? MediaBackendKind.migration
-                                        : MediaBackendKind.gst-pop;
+                                    for label[i] in root.backend-labels:
+                                        if label == value {
+                                            Bridge.media-backend = backend-from-index(i);
+                                        }
                                     root.any-edits-pending = true;
                                 }
                             }

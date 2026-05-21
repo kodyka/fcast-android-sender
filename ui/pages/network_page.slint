@@ -80,7 +80,7 @@ component NetworkInterfaceRow inherits Rectangle {
                     }
                     Text {
                         text: root.data.address-v4 == ""
-                            ? "(no IPv4 address)"
+                            ? @tr("network-no-ipv4", "(no IPv4 address)")
                             : root.data.address-v4;
                         color: Theme.text-secondary;
                         font-size: Theme.font-size-label;
