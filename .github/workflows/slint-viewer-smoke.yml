@@ -39,18 +39,19 @@ jobs:
           echo "Pinned slint version: $pinned"
 
       - name: Install xvfb and Slint runtime deps
-        # slint-viewer-linux is dynamically linked. libinput10 / libudev1 are
-        # pulled in by its winit backend; without them the loader fails with
-        # "libinput.so.10: cannot open shared object file" and exits 127.
+        # slint-viewer-linux mixes ld-linked libs (libinput10, libudev1, …)
+        # with dlopen-loaded ones (libxkbcommon-x11, libwayland-client). The
+        # latter don't appear in ldd, so we install both sets up-front.
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             xvfb \
             libfontconfig1 \
-            libxkbcommon0 \
+            libxkbcommon0 libxkbcommon-x11-0 \
             libinput10 \
             libudev1 \
-            libxcb-render0 libxcb-shape0 libxcb-xfixes0
+            libxcb-render0 libxcb-shape0 libxcb-xfixes0 \
+            libwayland-client0 libwayland-cursor0 libwayland-egl1
 
       - name: Download slint-viewer-linux v${{ steps.slint.outputs.version }}
         run: |
