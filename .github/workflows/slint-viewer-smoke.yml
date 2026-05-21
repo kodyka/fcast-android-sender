@@ -83,18 +83,21 @@ jobs:
         #   137       → SIGKILL from --kill-after (PASS — compile already succeeded)
         #   0 / 1     → clean window close / dialog cancel (won't happen here, treat as PASS)
         #   other     → unexpected (FAIL)
+        #
+        # GitHub Actions runs each `run:` with `bash -eo pipefail`, so a non-
+        # zero exit from `timeout` aborts the step before we can inspect it.
+        # Capture it via `|| EXIT=$?` so the case below sees the real code.
         run: |
-          set -uo pipefail
+          EXIT=0
           xvfb-run -a timeout --kill-after=2 8 \
-            ./slint-viewer/slint-viewer ui/main.slint
-          EXIT=$?
+            ./slint-viewer/slint-viewer ui/main.slint || EXIT=$?
           case "$EXIT" in
             255)
               echo "::error::ui/main.slint failed to compile (slint-viewer exit -1)"
               exit 1
               ;;
             0|1|124|137|143)
-              echo "✓ ui/main.slint compiled successfully (slint-viewer exit=$EXIT)"
+              echo "ui/main.slint compiled successfully (slint-viewer exit=$EXIT)"
               ;;
             *)
               echo "::error::unexpected slint-viewer exit code: $EXIT"
