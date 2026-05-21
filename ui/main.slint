@@ -54,10 +54,10 @@ import { Bridge, AppState, Panel } from "bridge.slint";
 export { Bridge, AppState, Panel }
 
 // ── Per-feature globals: re-export so slint_build generates Rust bindings ────
-import { AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
+import { SafeArea, AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
          Casting, Receivers, History, Macros, Quickbar, BitratePresets,
          Network, Mixer, DebugLog, Camera, Audio } from "state/index.slint";
-export { AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
+export { SafeArea, AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
          Casting, Receivers, History, Macros, Quickbar, BitratePresets,
          Network, Mixer, DebugLog, Camera, Audio }
 
@@ -97,16 +97,15 @@ export component MainWindow inherits Window {
     background: Theme.surface-primary;
     forward-focus: back-key-scope;
 
-    // safe-area helpers — reused by VerticalLayout padding and panel overlays.
-    // sa-bottom falls back to 65px because Slint 1.16 reports 0 for Android
-    // gesture-navigation (which uses system-gesture insets, not nav-bar insets).
-    // 65px ≈ 227 physical px / 3.5 scale = the gesture strip on this device.
-    // On 3-button-nav devices, safe-area-insets.bottom is ≥ 48px so the
-    // threshold of 10px keeps the real value.
-    property <length> sa-top: root.safe-area-insets.top;
-    // Slint 1.16 reports saB=16px for gesture-nav (only the home-indicator strip).
-    // The full gesture zone is 227 physical px / 3.5 = ~65px, so we take the max.
-    property <length> sa-bottom: root.safe-area-insets.bottom > 65px ? root.safe-area-insets.bottom : 65px;
+    // Populate SafeArea once from the platform's native insets.
+    // Safe-area insets don't change at runtime on this portrait-only app, so
+    // init-time population is sufficient.  Clamping logic lives in SafeArea.
+    init => {
+        SafeArea.raw-top    = root.safe-area-insets.top;
+        SafeArea.raw-bottom = root.safe-area-insets.bottom;
+        SafeArea.raw-left   = root.safe-area-insets.left;
+        SafeArea.raw-right  = root.safe-area-insets.right;
+    }
 
     back-key-scope := FocusScope {
         width: root.width;
@@ -127,8 +126,8 @@ export component MainWindow inherits Window {
             width: root.width;
             height: root.height;
             // Keep main content + control bar inside the OS safe area.
-            padding-top: root.sa-top;
-            padding-bottom: root.sa-bottom;
+            padding-top: SafeArea.top;
+            padding-bottom: SafeArea.bottom;
             Rectangle {
                 vertical-stretch: 1;
                 // Hide (and disable input on) the background page while any panel is open.
@@ -151,9 +150,6 @@ export component MainWindow inherits Window {
         // PanelHost owns the safe-area inset math; each panel inside needs no
         // y / height wiring of its own.
         PanelHost {
-            safe-top:    root.sa-top;
-            safe-bottom: root.sa-bottom;
-
             if PanelBridge.active == Panel.settings:            FullSettingsPage        { }
             if PanelBridge.active == Panel.debug:               FullDebugPage           { }
             if PanelBridge.active == Panel.codec-test:          CodecTestPage           { }
@@ -186,7 +182,7 @@ export component MainWindow inherits Window {
         // ── Global banner overlay ─────────────────────────────────────────────────
         InfoBanner {
             x: 0;
-            y: root.sa-top;
+            y: SafeArea.top;
             width: parent.width;
         }
     }

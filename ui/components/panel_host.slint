@@ -1,7 +1,7 @@
 // panel_host.slint — Geometry + visibility shell for full-screen overlay panels.
 //
 // Owns:
-//   - safe-area inset math (sa-top / sa-bottom)
+//   - safe-area inset math (reads SafeArea global directly)
 //   - "is this panel currently active" visibility gating
 //   - one conditional element per page
 //
@@ -14,11 +14,9 @@
 
 import { Panel } from "../bridge.slint";
 import { PanelBridge } from "../state/panel_bridge.slint";
+import { SafeArea } from "../state/safe_area.slint";
 
 export component PanelHost inherits Rectangle {
-    in property <length> safe-top;
-    in property <length> safe-bottom;
-
     background: transparent;
     width: parent.width;
     height: parent.height;
@@ -28,9 +26,9 @@ export component PanelHost inherits Rectangle {
     // Inset rect — children stretch to fill this, safe-area math lives here once.
     Rectangle {
         x: 0;
-        y: root.safe-top;
+        y: SafeArea.top;
         width: parent.width;
-        height: parent.height - root.safe-top - root.safe-bottom;
+        height: parent.height - SafeArea.top - SafeArea.bottom;
         background: transparent;
 
         @children
