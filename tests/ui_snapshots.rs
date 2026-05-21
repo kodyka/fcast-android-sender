@@ -233,10 +233,13 @@ fn ui_snapshots_all() {
             "home screen starts with no panel open"
         );
 
-        // The testing backend's element walker visits conditional branches
-        // too, so the PanelHeader inside the (currently-hidden) FullSettingsPage
-        // also publishes label "Settings". Filter by AccessibleRole::Button
-        // to pick the QuickActionButton on the home screen.
+        // QuickActionButton exposes label "Settings" twice in the tree: once
+        // on the button itself (role=button) and once on its inner `Text`
+        // child (role=text — Slint auto-derives accessible-label from a
+        // Text's content). Filter by AccessibleRole::Button to pick the
+        // interactive element. (Conditional `if cond: Component {}` branches
+        // are NOT instantiated when cond is false, so panels currently
+        // gated off by PanelBridge.active do not contribute matches.)
         let buttons: Vec<_> = ElementHandle::find_by_accessible_label(&ui, "Settings")
             .filter(|el| el.accessible_role() == Some(AccessibleRole::Button))
             .collect();

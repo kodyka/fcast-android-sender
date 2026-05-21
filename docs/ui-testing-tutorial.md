@@ -94,6 +94,12 @@ if !target.contains("android") {
 slint_build::compile_with_config("ui/main.slint", config).unwrap();
 ```
 
+`with_debug_info(self, enable: bool) -> Self` is a public method on
+`slint_build::CompilerConfiguration` in the `slint-build = "1.16.0"` and
+`1.16.1` releases (see `slint-build/lib.rs:223` in the crate source). The
+equivalent escape hatch is the `SLINT_EMIT_DEBUG_INFO=1` env var at build
+time — useful if you ever invoke the compiler outside `build.rs`.
+
 You do **not** need to do anything for this — it is on for host targets by
 default. If you ever see the warning above, the gate has regressed.
 
@@ -163,9 +169,10 @@ and trigger it." Example: the
     }]));
     bridge.set_quick_actions(actions.into());
 
-    // Filter by AccessibleRole::Button — the FullSettingsPage's PanelHeader
-    // also publishes label "Settings" and the testing backend's element
-    // walker visits conditional branches too.
+    // Filter by AccessibleRole::Button — the inner `Text { text: "Settings" }`
+    // inside QuickActionButton also auto-derives accessible-label "Settings"
+    // (role=text), so find_by_accessible_label returns both. See §8 for the
+    // detailed explanation.
     let buttons: Vec<_> = ElementHandle::find_by_accessible_label(&ui, "Settings")
         .filter(|el| el.accessible_role() == Some(AccessibleRole::Button))
         .collect();
@@ -188,9 +195,9 @@ use slint::ComponentHandle;
 | API | Style | Use when |
 |-----|-------|----------|
 | `el.invoke_accessible_default_action()` | sync, no event loop | A click / keyboard activation that fires the registered `accessible-action-default`. Fastest, used in this repo. |
-| `slint_testing::send_mouse_click(&ui, x, y)` | sync | You need a click at specific coordinates (e.g. testing hit-test boundaries). Get `x` / `y` from `el.absolute_position()` + `el.size()`. |
-| `el.single_click(PointerEventButton::Left).await` | async | You need a realistic move → press → wait → release sequence. Requires `init_integration_test_with_system_time()` and `slint::spawn_local`. |
-| `slint_testing::send_keyboard_string_sequence(&ui, &Key::Return.into())` | sync | Keyboard activation; pair with `instance.invoke_focus_<name>()` to focus first. |
+| `i_slint_backend_testing::send_mouse_click(&ui, x, y)` | sync | You need a click at specific coordinates (e.g. testing hit-test boundaries). Get `x` / `y` from `el.absolute_position()` + `el.size()`. |
+| `el.single_click(PointerEventButton::Left).await` | async | You need a realistic move → press → wait → release sequence. Requires either (a) `init_integration_test_with_system_time()` + `slint::spawn_local` + `slint::run_event_loop()`, or (b) enabling the **`internal`** feature on `i-slint-backend-testing` to expose `block_on`. This repo does neither, so this API is not used here. |
+| `i_slint_backend_testing::send_keyboard_string_sequence(&ui, &Key::Return.into())` | sync | Keyboard activation; pair with `instance.invoke_focus_<name>()` to focus first. |
 
 For finding elements:
 
@@ -211,10 +218,15 @@ These have been learned the hard way; keep new tests consistent.
 runs every scenario as a `{ … }` block inside it. **Do not** add a second
 `#[test]` function.
 
-Reason: the Slint testing backend can only be initialised once per process,
-and `cargo test` runs each `#[test]` on its own thread. A second `#[test]`
-function creating a `MainWindow` from another thread panics with
+Reason: the *integration-test* backends (`init_integration_test_with_mock_time`
+and `init_integration_test_with_system_time`) can only be initialised once per
+process, and `cargo test` runs each `#[test]` on its own thread. A second
+`#[test]` function creating a `MainWindow` from another thread panics with
 "backend already initialised".
+
+(`init_no_event_loop()` is the exception — its docs say each test thread can
+have its own backend. But it cannot drive timers or `slint::invoke_from_event_loop`,
+so this repo doesn't use it.)
 
 To add a new test, append a new scope to the existing function:
 
@@ -247,9 +259,9 @@ Three init modes exist; pick by scenario:
 
 | Init function | When to use |
 |--------------|-------------|
-| `init_no_event_loop()` | Pure synchronous tests, no animations, no timer callbacks. Cheapest. |
-| `init_integration_test_with_mock_time()` | Need a controllable clock for `animate`, `Timer`, etc. **This repo's default.** |
-| `init_integration_test_with_system_time()` | Async tests using `single_click().await`. Requires `slint::run_event_loop()` to drive. |
+| `init_no_event_loop()` | Pure synchronous tests, no animations, no timer callbacks. Cheapest. Per-thread backends are allowed (one-`#[test]` rule doesn't apply). |
+| `init_integration_test_with_mock_time()` | Need a controllable clock for `animate`, `Timer`, etc. **This repo's default.** Once per process. |
+| `init_integration_test_with_system_time()` | Async tests with `single_click().await` driven by `slint::spawn_local` + `slint::run_event_loop()`. Once per process. |
 
 ### Globals access
 
@@ -474,9 +486,19 @@ scope; cross-reference with this file to find the section number.
 
 ### `find_by_accessible_label` returns 2 or more when you expected 1
 
-- **Cause:** The Slint testing backend's element walker visits conditional
-  branches even if the condition is currently false. Any `PanelHeader { title:
-  @tr("X") }` etc. that uses your label will also match.
+- **Cause:** Multiple **always-instantiated** elements expose the same
+  accessible-label. Conditional `if cond: Component {}` branches are *not*
+  instantiated when `cond` is false — the walker in `search_api.rs` skips
+  invisible items — so they are not the source of extra matches. The usual
+  culprit is one of:
+  - A `Rectangle { accessible-role: button; accessible-label: "X" }` *and*
+    a `Text { text: "X" }` inside it. Slint auto-derives accessible-label
+    from a `Text`'s content, so both elements show up (roles `button` and
+    `text`).
+  - A repeater (`for entry in model:`) that renders multiple tiles with the
+    same label.
+  - A `PanelHeader { title: "X" }` that lives outside a panel gate — i.e.
+    in always-visible chrome, not inside a `PanelHost` conditional.
 - **Fix:** narrow by role:
   ```rust
   .filter(|el| el.accessible_role() == Some(AccessibleRole::Button))
