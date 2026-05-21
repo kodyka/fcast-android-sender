@@ -1,0 +1,34 @@
+repos:
+  - repo: local
+    hooks:
+      - id: forbid-raw-hex-colors
+        name: Forbid raw hex colors in FCast Slint files
+        entry: >
+          bash -c '! git grep -nE "#[0-9a-fA-F]{3,8}"
+            -- "ui/components/*.slint" "ui/pages/*.slint"
+               "ui/main.slint" "ui/bridge.slint"
+               ":!ui/components/qr_placeholder.slint"
+               ":!ui/components/std/"'
+        language: system
+        pass_filenames: false
+
+      - id: forbid-hard-coded-font-size
+        name: Forbid hard-coded font-size px (use Theme.font-size-*)
+        entry: >
+          bash -c '! git grep -nE "font-size: [0-9]+px"
+            -- "ui/components/*.slint" "ui/pages/*.slint"
+               ":!ui/components/std/"'
+        language: system
+        pass_filenames: false
+
+      - id: forbid-direct-active-panel-writes
+        name: Forbid direct Bridge.active-panel writes (use PanelBridge.push/pop)
+        entry: bash -c '! git grep -nE "Bridge\.active-panel\s*=" -- "ui/"'
+        language: system
+        pass_filenames: false
+
+      - id: forbid-direct-lifecycle-writes
+        name: Forbid direct Bridge.lifecycle writes (use exit-lifecycle callback)
+        entry: bash -c '! git grep -nE "Bridge\.lifecycle\s*=" -- "ui/"'
+        language: system
+        pass_filenames: false

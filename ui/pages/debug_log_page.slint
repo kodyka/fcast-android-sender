@@ -62,11 +62,11 @@ export component DebugLogPage inherits Rectangle {
     }
 
     pure function level-color(level: LogLevel) -> color {
-        return level == LogLevel.trace   ? #888888 :
-               level == LogLevel.debug   ? #4080ff :
-               level == LogLevel.info    ? #20a020 :
-               level == LogLevel.warning ? #f0a020 :
-                                            #e02020;   // error
+        return level == LogLevel.trace   ? Theme.log-trace   :
+               level == LogLevel.debug   ? Theme.log-debug   :
+               level == LogLevel.info    ? Theme.log-info    :
+               level == LogLevel.warning ? Theme.log-warning :
+                                            Theme.log-error;
     }
 
     pure function level-name(level: LogLevel) -> string {

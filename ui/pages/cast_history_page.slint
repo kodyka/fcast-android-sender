@@ -42,9 +42,9 @@ export component CastHistoryPage inherits Rectangle {
     // colour names are illustrative; substitute Theme.* tokens once
     // the design system has dedicated success/warning/error colours.
     pure function status-color(status: string) -> color {
-        return status == "Completed" ? #2e7d32  :   // green
-               status == "Cancelled" ? #ed6c02  :   // amber
-               status == "Failed"    ? #c62828  :   // red
+        return status == "Completed" ? Theme.success  :
+               status == "Cancelled" ? Theme.warning  :
+               status == "Failed"    ? Theme.error    :
                                         Theme.surface-card.brighter(20%);
     }
 

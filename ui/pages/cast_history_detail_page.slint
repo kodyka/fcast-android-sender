@@ -31,9 +31,9 @@ export component CastHistoryDetailPage inherits Rectangle {
     }
 
     pure function status-color(status: string) -> color {
-        return status == "Completed" ? #2e7d32  :
-               status == "Cancelled" ? #ed6c02  :
-               status == "Failed"    ? #c62828  :
+        return status == "Completed" ? Theme.success  :
+               status == "Cancelled" ? Theme.warning  :
+               status == "Failed"    ? Theme.error    :
                                         Theme.surface-card.brighter(20%);
     }
 

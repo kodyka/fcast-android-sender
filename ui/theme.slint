@@ -7,6 +7,7 @@
 export global Theme {
     // ── Surfaces ─────────────────────────────────────────────────────────
     out property <color> surface-primary:  #0b1020;
+    out property <color> surface-black:    #000000;  // stealth overlay — intentional pure black
     out property <color> surface-card:     #222633;
     out property <color> surface-bar:      #111827;
     out property <color> surface-overlay:  #1f2937cc;
@@ -74,6 +75,13 @@ export global Theme {
     out property <length> thumbnail-width:  200px;
     out property <length> qr-square-min:    240px;
     out property <length> qr-square-max:    360px;
+
+    // ── Debug log level colors ────────────────────────────────────────────
+    out property <color> log-trace:   #888888;
+    out property <color> log-debug:   #4080ff;
+    out property <color> log-info:    #20a020;
+    out property <color> log-warning: #f0a020;
+    out property <color> log-error:   #e02020;
 
     // ── Elevation ─────────────────────────────────────────────────────────
     // Drop-shadow tokens. Slint expresses elevation per-element with
