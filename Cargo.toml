@@ -47,10 +47,11 @@ slint-build = "1.16.0"
 [dev-dependencies]
 tempfile = "3"
 i-slint-backend-testing = "1.16.0"
+tokio = { version = "1.51", features = ["full"] }
 
 [lib]
 name = "fcastsender"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [package.metadata.android]
 package = "org.fcast.sender"

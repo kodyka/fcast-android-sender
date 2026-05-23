@@ -133,6 +133,34 @@ export enum Panel {
     network,
     mixer,
     media-backend,
+    service-config,
+    srt-config,
+}
+
+export enum ServiceMode {
+    embedded,
+    android-service,
+    external,
+}
+
+export struct ServiceConfig {
+    gstpop-enabled:            bool,
+    migration-runtime-enabled: bool,
+    auto-start-services:       bool,
+    service-mode:              ServiceMode,
+}
+
+export struct OverlayItem {
+    id:      string,
+    slot-id: string,
+    visible: bool,
+    source:  string,
+    x:       int,
+    y:       int,
+    width:   int,
+    height:  int,
+    alpha:   float,
+    z-order: int,
 }
 
 export struct QuickAction {
@@ -401,6 +429,12 @@ export global Bridge {
     callback apply-mixer-slot-config(string, float, int, float);
     // (width-px, height-px, sample-rate-hz)
     callback apply-mixer-canvas(int, int, int);
+
+    // ── Overlay callbacks (STEP 11) ──────────────────────────────────────
+    in property <[OverlayItem]> overlays: [];
+    callback add-overlay(OverlayItem);
+    callback remove-overlay(string);   // (overlay-id)
+    callback update-overlay(OverlayItem);
 
     // ── Public functions (callable from Slint) ───────────────────────────
     public function change-state(to: AppState) {

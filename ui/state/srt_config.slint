@@ -1,0 +1,18 @@
+import { SrtSource, OverlayItem } from "../bridge.slint";
+
+export global SrtConfig {
+    // Dynamic list of SRT sources.
+    in property <[SrtSource]> sources: [];
+
+    // Overlays attached to all sources.
+    in property <[OverlayItem]> overlays: [];
+
+    // ── Commands ──────────────────────────────────────────────────────
+    callback add-source();
+    callback remove-source(slot-id: string);
+    callback update-source(SrtSource);
+
+    callback add-overlay(OverlayItem);
+    callback remove-overlay(overlay-id: string);
+    callback update-overlay(OverlayItem);
+}

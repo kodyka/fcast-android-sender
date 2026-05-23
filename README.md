@@ -124,6 +124,42 @@ CI intentionally validates the `aarch64-linux-android` path only for speed.
 The crate metadata still lists the other Android targets for local and release
 builds.
 
+## Architecture overview
+
+### Service abstraction layer
+
+The app uses a `ServiceManager` trait to abstract service lifecycle:
+
+```text
+┌───────────────────────────────────────────┐
+│               ServiceManager              │
+│  start() / stop() / status()              │
+├──────────────────┬────────────────────────┤
+│  GstPopService   │  MigrationService      │
+│  Manager         │  Manager               │
+│  (Android/       │  (in-process           │
+│   Embedded/      │   runtime)             │
+│   External)      │                        │
+└──────────────────┴────────────────────────┘
+```
+
+Each service can be independently enabled/disabled via the Service Configuration page. The UI functions correctly with zero, one, or both services running.
+
+### SRT sources & overlays
+
+The mixer supports N SRT source slots (extending the original A/B pair). Each slot can have multiple image overlays composited on top via GStreamer `compositor` pads.
+
+```text
+SRT Source 1 ──┐
+               ├── compositor ──► video output
+SRT Source 2 ──┤     ▲
+               │     │
+  Overlay 1 ───┤     │
+  Overlay 2 ───┘     │
+                      │
+  Audio mixer ────────┘ (separate audio path)
+```
+
 ## Repository layout
 
 - `Cargo.toml`, `build.rs`, `src/`: `android-sender` Rust crate

@@ -1,0 +1,15 @@
+import { ServiceMode, ServiceConfig } from "../bridge.slint";
+
+export global ServiceConfigBridge {
+    // ── State (Rust -> Slint) ─────────────────────────────────────────
+    in property <ServiceConfig> config: {
+        gstpop-enabled:            true,
+        migration-runtime-enabled: true,
+        auto-start-services:       true,
+        service-mode:              ServiceMode.embedded,
+    };
+
+    // ── Commands (Slint -> Rust) ──────────────────────────────────────
+    callback save-config(ServiceConfig);
+    callback reset-config();
+}

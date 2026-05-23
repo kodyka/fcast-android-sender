@@ -1,6 +1,7 @@
 import { ScrollView, LineEdit, ComboBox } from "std-widgets.slint";
 import { Bridge, Panel, MediaBackendKind, MediaBackendState } from "../bridge.slint";
 import { PanelBridge } from "../state/panel_bridge.slint";
+import { ServiceBridge, ServiceEntry, MediaOp } from "../state/service_bridge.slint";
 import { Theme } from "../theme.slint";
 import { PrimaryButton, DestructiveButton, TextButton } from "../components/buttons.slint";
 import { SettingsSection } from "../components/settings_rows.slint";
@@ -128,9 +129,10 @@ export component MediaBackendPage inherits Rectangle {
                     }
                 }
 
-                SettingsSection {
-                    title: @tr("SERVICE");
-                    visible: Bridge.media-backend == MediaBackendKind.gst-pop;
+                // ── Dynamic service list ─────────────────────────────
+                for svc in ServiceBridge.services: SettingsSection {
+                    title: svc.label;
+                    visible: svc.enabled;
 
                     Rectangle {
                         background: Theme.surface-card;
@@ -147,19 +149,14 @@ export component MediaBackendPage inherits Rectangle {
                                     height: 12px;
                                     border-radius: 6px;
                                     background:
-                                        Bridge.gstpop-service-state == "running"  ? Theme.success :
-                                        Bridge.gstpop-service-state == "starting" ? Theme.warning :
-                                        Bridge.gstpop-service-state == "error"    ? Theme.error-fg :
-                                        Theme.text-disabled;
+                                        svc.running && svc.healthy  ? Theme.success :
+                                        svc.running                 ? Theme.warning :
+                                        !svc.healthy                ? Theme.error-fg :
+                                                                      Theme.text-disabled;
                                     y: (parent.height - self.height) / 2;
                                 }
                                 Text {
-                                    text:
-                                        Bridge.gstpop-service-externally-owned    ? @tr("Using external gst-pop daemon") :
-                                        Bridge.gstpop-service-state == "running"  ? @tr("gst-pop service running") :
-                                        Bridge.gstpop-service-state == "starting" ? @tr("gst-pop service starting\u{2026}") :
-                                        Bridge.gstpop-service-state == "error"    ? @tr("gst-pop service failed") :
-                                                                                    @tr("gst-pop service stopped");
+                                    text: svc.status-text;
                                     color: Theme.text-primary;
                                     font-size: Theme.font-size-body;
                                     horizontal-stretch: 1;
@@ -167,23 +164,54 @@ export component MediaBackendPage inherits Rectangle {
                                 }
                             }
 
+                            if svc.error-text != "": Text {
+                                text: svc.error-text;
+                                color: Theme.error-fg;
+                                font-size: Theme.font-size-label;
+                                wrap: word-wrap;
+                            }
+
                             HorizontalLayout {
                                 spacing: 12px;
                                 PrimaryButton {
-                                    label: @tr("Start service");
-                                    enabled: Bridge.gstpop-service-state == "stopped"
-                                          || Bridge.gstpop-service-state == "error";
-                                    clicked => { Bridge.start-gstpop-service(); }
+                                    label: @tr("Start");
+                                    enabled: !svc.running;
+                                    clicked => {
+                                        ServiceBridge.request-service-op(svc.id, MediaOp.start);
+                                    }
                                 }
                                 DestructiveButton {
-                                    label: @tr("Stop service");
-                                    enabled: Bridge.gstpop-service-state == "running"
-                                          || Bridge.gstpop-service-state == "starting";
-                                    clicked => { Bridge.stop-gstpop-service(); }
+                                    label: @tr("Stop");
+                                    enabled: svc.running;
+                                    clicked => {
+                                        ServiceBridge.request-service-op(svc.id, MediaOp.stop);
+                                    }
                                 }
                             }
                         }
                     }
+                }
+
+                // No-service fallback
+                if !ServiceBridge.any-service-ready: Rectangle {
+                    background: Theme.surface-card;
+                    border-radius: Theme.radius-card;
+                    min-height: 56px;
+                    HorizontalLayout {
+                        padding: Theme.padding-screen;
+                        Text {
+                            text: @tr("No service is currently running. Open Service Configuration to enable one.");
+                            color: Theme.text-secondary;
+                            font-size: Theme.font-size-body;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+
+                // Navigation to service configuration
+                TextButton {
+                    label: @tr("Service Configuration\u{2026}");
+                    clicked => { PanelBridge.push(Panel.service-config); }
                 }
             }
         }

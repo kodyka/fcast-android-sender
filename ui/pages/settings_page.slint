@@ -203,6 +203,16 @@ export component FullSettingsPage inherits Rectangle {
                             : @tr("gst-pop ({})", Bridge.gstpop-url);
                         clicked => { PanelBridge.push(Panel.media-backend); }
                     }
+                    SettingsValueRow {
+                        title: @tr("Service configuration");
+                        value: @tr("open-panel-action" => "Open");
+                        clicked => { PanelBridge.push(Panel.service-config); }
+                    }
+                    SettingsValueRow {
+                        title: @tr("SRT sources & overlays");
+                        value: @tr("open-panel-action" => "Open");
+                        clicked => { PanelBridge.push(Panel.srt-config); }
+                    }
                 }
 
                 // ── Section: DATA ─────────────────────────────────────────

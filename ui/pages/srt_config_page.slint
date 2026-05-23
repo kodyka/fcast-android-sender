@@ -1,0 +1,260 @@
+import { LineEdit, Switch, ScrollView } from "std-widgets.slint";
+import { SrtSource, OverlayItem, Panel } from "../bridge.slint";
+import { SrtConfig } from "../state/srt_config.slint";
+import { PanelBridge } from "../state/panel_bridge.slint";
+import { Theme } from "../theme.slint";
+import { PrimaryButton, DestructiveButton, TextButton } from "../components/buttons.slint";
+import { SettingsSection, SettingsSliderRow } from "../components/settings_rows.slint";
+import { PanelHeader, Card, FormRow } from "../components/panel_chrome.slint";
+
+// ── Per-source overlay row ────────────────────────────────────────────
+component OverlayRow inherits Rectangle {
+    in-out property <OverlayItem> data;
+    callback edited();
+    callback remove-clicked();
+
+    background: Theme.surface-primary;
+    border-radius: Theme.radius-card;
+    min-height: 120px;
+
+    VerticalLayout {
+        padding: Theme.padding-screen;
+        spacing: Theme.spacing-default;
+
+        HorizontalLayout {
+            spacing: Theme.spacing-default;
+            Text {
+                text: @tr("Overlay");
+                color: Theme.text-primary;
+                font-size: Theme.font-size-body;
+                horizontal-stretch: 1;
+                vertical-alignment: center;
+            }
+            Switch {
+                checked <=> root.data.visible;
+                toggled => { root.edited(); }
+            }
+            DestructiveButton {
+                label: @tr("Remove");
+                clicked => { root.remove-clicked(); }
+            }
+        }
+
+        FormRow {
+            label: @tr("Image path / URL");
+            LineEdit {
+                text <=> root.data.source;
+                edited(t) => { root.edited(); }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.spacing-default;
+            SettingsSliderRow {
+                title: @tr("X");
+                minimum: -1920;
+                maximum: 3840;
+                show-fractional: false;
+                value: root.data.x;
+                changed(v) => { root.data.x = Math.round(v); root.edited(); }
+            }
+            SettingsSliderRow {
+                title: @tr("Y");
+                minimum: -1080;
+                maximum: 2160;
+                show-fractional: false;
+                value: root.data.y;
+                changed(v) => { root.data.y = Math.round(v); root.edited(); }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.spacing-default;
+            SettingsSliderRow {
+                title: @tr("Width");
+                minimum: 0;
+                maximum: 1920;
+                show-fractional: false;
+                value: root.data.width;
+                changed(v) => { root.data.width = Math.round(v); root.edited(); }
+            }
+            SettingsSliderRow {
+                title: @tr("Height");
+                minimum: 0;
+                maximum: 1080;
+                show-fractional: false;
+                value: root.data.height;
+                changed(v) => { root.data.height = Math.round(v); root.edited(); }
+            }
+        }
+
+        SettingsSliderRow {
+            title: @tr("Alpha");
+            minimum: 0;
+            maximum: 1;
+            show-fractional: true;
+            value: root.data.alpha;
+            changed(v) => { root.data.alpha = v; root.edited(); }
+        }
+
+        SettingsSliderRow {
+            title: @tr("Z-order");
+            minimum: 0;
+            maximum: 99;
+            show-fractional: false;
+            value: root.data.z-order;
+            changed(v) => { root.data.z-order = Math.round(v); root.edited(); }
+        }
+    }
+}
+
+// ── Per-source card with embedded overlays ────────────────────────────
+component SrtSourceCard inherits Rectangle {
+    in-out property <SrtSource> data;
+    in property <[OverlayItem]> overlays;
+    in property <string> title;
+    callback source-edited();
+
+    background: Theme.surface-card;
+    border-radius: Theme.radius-card;
+
+    VerticalLayout {
+        padding: Theme.padding-screen;
+        spacing: Theme.spacing-default;
+
+        HorizontalLayout {
+            spacing: Theme.spacing-default;
+            Text {
+                text: root.title;
+                color: Theme.text-primary;
+                font-size: Theme.font-size-heading;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            Switch {
+                checked <=> root.data.enabled;
+                toggled => { root.source-edited(); }
+            }
+        }
+
+        FormRow {
+            label: @tr("SRT URL");
+            LineEdit {
+                placeholder-text: @tr("srt://relay.example:9710?mode=caller");
+                text <=> root.data.uri;
+                edited(t) => { root.source-edited(); }
+            }
+        }
+
+        SettingsSliderRow {
+            title: @tr("Latency (ms)");
+            minimum: 0;
+            maximum: 8000;
+            show-fractional: false;
+            value: root.data.latency-ms;
+            changed(v) => { root.data.latency-ms = Math.round(v); root.source-edited(); }
+        }
+
+        Text {
+            text: @tr("IMAGE OVERLAYS");
+            color: Theme.text-secondary;
+            font-size: Theme.font-size-label;
+        }
+
+        for overlay in root.overlays: OverlayRow {
+            data: overlay;
+            edited => { SrtConfig.update-overlay(self.data); }
+            remove-clicked => { SrtConfig.remove-overlay(overlay.id); }
+        }
+
+        TextButton {
+            label: @tr("+ Add Overlay");
+            clicked => {
+                SrtConfig.add-overlay({
+                    id: "",
+                    slot-id: root.data.slot-id,
+                    visible: true,
+                    source: "",
+                    x: 0, y: 0,
+                    width: 0, height: 0,
+                    alpha: 1.0,
+                    z-order: 10,
+                });
+            }
+        }
+    }
+}
+
+// ── Composition preview ───────────────────────────────────────────────
+component CompositionPreview inherits Rectangle {
+    in property <int> canvas-width:  1280;
+    in property <int> canvas-height: 720;
+    in property <[OverlayItem]> overlays;
+
+    background: Theme.surface-primary;
+    border-radius: Theme.radius-card;
+    min-height: 180px;
+
+    VerticalLayout {
+        padding: Theme.padding-screen;
+        Text {
+            text: @tr("Composition Preview") + " (" + root.canvas-width + "x" + root.canvas-height + ")";
+            color: Theme.text-secondary;
+            font-size: Theme.font-size-label;
+            horizontal-alignment: center;
+        }
+    }
+
+    for overlay in root.overlays: Rectangle {
+        x:      overlay.x      * root.width  / root.canvas-width;
+        y:      overlay.y      * root.height / root.canvas-height;
+        width:  (overlay.width  > 0 ? overlay.width  : 100) * root.width  / root.canvas-width;
+        height: (overlay.height > 0 ? overlay.height : 100) * root.height / root.canvas-height;
+        background: Theme.accent.transparentize(1.0 - overlay.alpha);
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: Theme.accent;
+    }
+}
+
+// ── Main page ─────────────────────────────────────────────────────────
+export component SrtConfigPage inherits Rectangle {
+    width:      100%;
+    height:     100%;
+    background: Theme.surface-primary;
+
+    VerticalLayout {
+        PanelHeader {
+            title: @tr("SRT Sources & Overlays");
+            close-clicked => { PanelBridge.pop(); }
+        }
+
+        ScrollView {
+            mouse-drag-pan-enabled: true;
+            VerticalLayout {
+                alignment: start;
+                spacing: Theme.spacing-default;
+                padding: Theme.padding-screen;
+
+                for src[idx] in SrtConfig.sources: SrtSourceCard {
+                    title: @tr("Source") + " " + (idx + 1);
+                    data: src;
+                    overlays: SrtConfig.overlays;
+                    source-edited => { SrtConfig.update-source(self.data); }
+                }
+
+                PrimaryButton {
+                    label: @tr("+ Add SRT Source");
+                    clicked => { SrtConfig.add-source(); }
+                }
+
+                SettingsSection {
+                    title: @tr("PREVIEW");
+                    CompositionPreview {
+                        overlays: SrtConfig.overlays;
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1304,6 +1304,130 @@ impl MixerNode {
             slot_control_points: self.slot_control_points.clone(),
         })
     }
+
+    /// Add an image overlay as an extra compositor pad.
+    ///
+    /// Pipeline segment: filesrc ! decodebin ! videoconvert ! videoscale
+    /// ! video/x-raw,width=W,height=H ! imagefreeze ! compositor.sink_N
+    pub fn add_overlay(
+        &mut self,
+        overlay: &crate::overlay::OverlayConfig,
+    ) -> Result<Vec<String>, String> {
+        let live = self.live_pipeline.as_mut().ok_or("mixer not running")?;
+        let compositor = live
+            .video_mixer
+            .as_ref()
+            .ok_or("no video compositor in mixer")?;
+        let pipeline = &live.pipeline;
+
+        let src_name     = format!("overlay-src-{}", overlay.id);
+        let freeze_name  = format!("overlay-freeze-{}", overlay.id);
+        let convert_name = format!("overlay-convert-{}", overlay.id);
+        let scale_name   = format!("overlay-scale-{}", overlay.id);
+
+        let filesrc      = Self::make_element("filesrc",      Some(&src_name))?;
+        let decodebin    = Self::make_element("decodebin",    None)?;
+        let videoconvert = Self::make_element("videoconvert", Some(&convert_name))?;
+        let videoscale   = Self::make_element("videoscale",   Some(&scale_name))?;
+        let imagefreeze  = Self::make_element("imagefreeze",  Some(&freeze_name))?;
+
+        match &overlay.source {
+            crate::overlay::OverlaySource::File(path) => {
+                filesrc.set_property("location", path.to_str().unwrap_or_default());
+            }
+            crate::overlay::OverlaySource::Url(_url) => {
+                return Err("URL overlay sources not yet supported in pipeline".into());
+            }
+        }
+
+        pipeline
+            .add_many([&filesrc, &decodebin, &videoconvert, &videoscale, &imagefreeze])
+            .map_err(|e| format!("add overlay elements: {e}"))?;
+
+        gst::Element::link(&filesrc, &decodebin)
+            .map_err(|e| format!("link filesrc->decodebin: {e}"))?;
+        gst::Element::link_many([&videoconvert, &videoscale, &imagefreeze])
+            .map_err(|e| format!("link convert->scale->freeze: {e}"))?;
+
+        let convert_weak = videoconvert.downgrade();
+        decodebin.connect_pad_added(move |_element, src_pad| {
+            let Some(convert) = convert_weak.upgrade() else { return };
+            let sink_pad = convert.static_pad("sink").expect("videoconvert sink");
+            if !sink_pad.is_linked() {
+                let _ = src_pad.link(&sink_pad);
+            }
+        });
+
+        let templ = compositor
+            .pad_template("sink_%u")
+            .ok_or("compositor missing sink_%u template")?;
+        let comp_pad = compositor
+            .request_pad(&templ, None, None)
+            .ok_or("failed to request compositor sink pad")?;
+
+        comp_pad.set_property("xpos", overlay.rect.x);
+        comp_pad.set_property("ypos", overlay.rect.y);
+        if overlay.rect.width > 0 {
+            comp_pad.set_property("width", overlay.rect.width as i32);
+        }
+        if overlay.rect.height > 0 {
+            comp_pad.set_property("height", overlay.rect.height as i32);
+        }
+        comp_pad.set_property("alpha", overlay.alpha);
+        comp_pad.set_property("zorder", overlay.z_order as u32);
+
+        let freeze_src = imagefreeze.static_pad("src").ok_or("imagefreeze missing src")?;
+        freeze_src
+            .link(&comp_pad)
+            .map_err(|e| format!("link imagefreeze->compositor: {e:?}"))?;
+
+        for elem in [&filesrc, &decodebin, &videoconvert, &videoscale, &imagefreeze] {
+            elem.sync_state_with_parent()
+                .map_err(|e| format!("sync_state: {e}"))?;
+        }
+
+        Ok(vec![src_name, convert_name, scale_name, freeze_name])
+    }
+
+    /// Remove an overlay's elements from the running pipeline.
+    pub fn remove_overlay(&mut self, overlay_id: &str) -> Result<(), String> {
+        let live = self.live_pipeline.as_mut().ok_or("mixer not running")?;
+        let pipeline = &live.pipeline;
+
+        for name in [
+            format!("overlay-src-{overlay_id}"),
+            format!("overlay-convert-{overlay_id}"),
+            format!("overlay-scale-{overlay_id}"),
+            format!("overlay-freeze-{overlay_id}"),
+        ] {
+            if let Some(elem) = pipeline.by_name(&name) {
+                let _ = elem.set_state(gst::State::Null);
+                let _ = pipeline.remove(&elem);
+            }
+        }
+        Ok(())
+    }
+
+    /// Update position / alpha / z-order of an existing overlay pad.
+    pub fn update_overlay_props(
+        &self,
+        overlay: &crate::overlay::OverlayConfig,
+    ) -> Result<(), String> {
+        let live = self.live_pipeline.as_ref().ok_or("mixer not running")?;
+        let freeze_name = format!("overlay-freeze-{}", overlay.id);
+        let freeze = live
+            .pipeline
+            .by_name(&freeze_name)
+            .ok_or_else(|| format!("overlay element {freeze_name} not found"))?;
+        let freeze_src = freeze.static_pad("src").ok_or("no src pad")?;
+        let comp_pad = freeze_src.peer().ok_or("imagefreeze not linked")?;
+
+        comp_pad.set_property("xpos", overlay.rect.x);
+        comp_pad.set_property("ypos", overlay.rect.y);
+        comp_pad.set_property("alpha", overlay.alpha);
+        comp_pad.set_property("zorder", overlay.z_order as u32);
+        Ok(())
+    }
 }
 
 #[cfg(test)]

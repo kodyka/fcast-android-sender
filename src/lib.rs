@@ -33,7 +33,19 @@ use tracing::{info, warn};
 
 pub mod log_ring;
 
-mod backend;
+/// Service lifecycle abstraction (STEP 01).
+pub mod service;
+
+/// SRT source management with health monitoring (STEP 09).
+pub mod srt;
+
+/// Image overlay composition (STEP 10).
+pub mod overlay;
+
+/// Error types surfaced to the UI (STEP 14).
+pub mod error;
+
+pub mod backend;
 pub mod migration;
 mod whep_signaller_compat;
 

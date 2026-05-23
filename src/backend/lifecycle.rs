@@ -241,6 +241,7 @@ fn read_config_from_bridge(weak: &Weak<MainWindow>) -> StoredBackendConfig {
         gstpop_url: bridge.get_gstpop_url().to_string(),
         gstpop_api_key: (!api_key.is_empty()).then_some(api_key),
         gstpop_pipeline_id: bridge.get_gstpop_pipeline_id().to_string(),
+        ..StoredBackendConfig::defaults()
     }
 }
 

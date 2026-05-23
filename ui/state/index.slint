@@ -2,7 +2,10 @@
 // Import from here in pages/components that need the new globals.
 // Transitional: bridge.slint still holds globals not yet migrated.
 
-import { SafeArea }       from "safe_area.slint";
+import { SafeArea }           from "safe_area.slint";
+import { ServiceConfigBridge } from "service_config.slint";
+import { ServiceBridge, ServiceEntry, MediaOp } from "service_bridge.slint";
+import { SrtConfig }           from "srt_config.slint";
 import { AppBridge }      from "app_bridge.slint";
 import { PanelBridge }    from "panel_bridge.slint";
 import { BannerBridge }   from "banner.slint";
@@ -22,4 +25,5 @@ import { Audio }          from "audio.slint";
 
 export { SafeArea, AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
          Casting, Receivers, History, Macros, Quickbar, BitratePresets,
-         Network, Mixer, DebugLog, Camera, Audio }
+         Network, Mixer, DebugLog, Camera, Audio,
+         ServiceConfigBridge, ServiceBridge, ServiceEntry, MediaOp, SrtConfig }

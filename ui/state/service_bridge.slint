@@ -1,0 +1,35 @@
+import { MixerState } from "../bridge.slint";
+
+/// A single service's UI-facing state.
+export struct ServiceEntry {
+    id:          string,
+    label:       string,
+    enabled:     bool,
+    running:     bool,
+    healthy:     bool,
+    status-text: string,
+    error-text:  string,
+}
+
+/// Generic media operation the UI can request.
+export enum MediaOp {
+    start,
+    stop,
+    probe,
+}
+
+export global ServiceBridge {
+    // ── Per-service status (Rust -> Slint) ────────────────────────────
+    in property <[ServiceEntry]> services: [];
+
+    // ── Aggregate health (Rust -> Slint) ──────────────────────────────
+    in property <bool> any-service-ready: false;
+
+    // ── Generic commands (Slint -> Rust) ──────────────────────────────
+    callback request-service-op(id: string, op: MediaOp);
+
+    // ── Media source / destination operations ─────────────────────────
+    callback start-stream();
+    callback stop-stream();
+    callback apply-source-config(slot-id: string, params: string);
+}

@@ -56,10 +56,12 @@ export { Bridge, AppState, Panel }
 // ── Per-feature globals: re-export so slint_build generates Rust bindings ────
 import { SafeArea, AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
          Casting, Receivers, History, Macros, Quickbar, BitratePresets,
-         Network, Mixer, DebugLog, Camera, Audio } from "state/index.slint";
+         Network, Mixer, DebugLog, Camera, Audio,
+         ServiceConfigBridge, ServiceBridge, ServiceEntry, MediaOp, SrtConfig } from "state/index.slint";
 export { SafeArea, AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
          Casting, Receivers, History, Macros, Quickbar, BitratePresets,
-         Network, Mixer, DebugLog, Camera, Audio }
+         Network, Mixer, DebugLog, Camera, Audio,
+         ServiceConfigBridge, ServiceBridge, ServiceEntry, MediaOp, SrtConfig }
 
 // ── Page component imports ────────────────────────────────────────────────────
 import { ConnectView }                   from "pages/connect_page.slint";
@@ -87,10 +89,42 @@ import { DebugVideoPage }               from "pages/debug_video_page.slint";
 import { NetworkPage }                  from "pages/network_page.slint";
 import { MixerPage }                    from "pages/mixer_page.slint";
 import { MediaBackendPage }             from "pages/media_backend_page.slint";
+import { ServiceConfigPage }            from "pages/service_config_page.slint";
+import { SrtConfigPage }                from "pages/srt_config_page.slint";
+import { ServiceBridge }                from "state/service_bridge.slint";
 import { Theme } from "theme.slint";
 import { CastControlBar } from "components/control_bar.slint";
 import { InfoBanner } from "components/info_banner.slint";
 import { PanelHost } from "components/panel_host.slint";
+
+// ── No-service fallback view ──────────────────────────────────────────────────
+import { PrimaryButton } from "components/buttons.slint";
+import { PanelBridge } from "state/panel_bridge.slint";
+component NoServiceView inherits Rectangle {
+    background: Theme.surface-primary;
+    VerticalLayout {
+        alignment: center;
+        spacing: Theme.spacing-default;
+        padding: Theme.padding-screen;
+        Text {
+            text: @tr("No media service is running");
+            color: Theme.text-primary;
+            font-size: Theme.font-size-heading;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: @tr("Enable a service in Settings > Service Configuration to start casting.");
+            color: Theme.text-secondary;
+            font-size: Theme.font-size-body;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+        PrimaryButton {
+            label: @tr("Open Service Configuration");
+            clicked => { PanelBridge.push(Panel.service-config); }
+        }
+    }
+}
 
 // ── Root window ───────────────────────────────────────────────────────────────
 export component MainWindow inherits Window {
@@ -140,7 +174,10 @@ export component MainWindow inherits Window {
                 if Bridge.app-state == AppState.Disconnected:      ConnectView { }
                 if Bridge.app-state == AppState.Connecting:        ConnectingView { }
                 if Bridge.app-state == AppState.SelectingSettings: SettingsPageView { }
-                if Bridge.app-state == AppState.WaitingForMedia:   WaitingForMediaView { }
+                if Bridge.app-state == AppState.WaitingForMedia && ServiceBridge.any-service-ready:
+                    WaitingForMediaView { }
+                if Bridge.app-state == AppState.WaitingForMedia && !ServiceBridge.any-service-ready:
+                    NoServiceView { }
                 if Bridge.app-state == AppState.Casting:           CastingView { }
             }
             CastControlBar { }
@@ -177,6 +214,8 @@ export component MainWindow inherits Window {
             if PanelBridge.active == Panel.network:             NetworkPage             { }
             if PanelBridge.active == Panel.mixer:               MixerPage               { }
             if PanelBridge.active == Panel.media-backend:       MediaBackendPage        { }
+            if PanelBridge.active == Panel.service-config:      ServiceConfigPage       { }
+            if PanelBridge.active == Panel.srt-config:          SrtConfigPage           { }
         }
 
         // ── Global banner overlay ─────────────────────────────────────────────────
