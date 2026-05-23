@@ -11,6 +11,7 @@
 //! To regenerate accessibility golden files:
 //!   UI_SNAPSHOT_REFRESH=1 cargo test --test ui_snapshots
 
+use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::ComponentHandle;
 
 slint::include_modules!();
@@ -191,6 +192,69 @@ fn ui_snapshots_all() {
         assert_eq!(
             sa.get_bottom(), 0.0_f32,
             "SafeArea.bottom should be 0 on landscape tablets with no bottom inset"
+        );
+    }
+
+    // ── Home → Settings navigation via accessibility action ───────────────────────
+
+    // 7. home_screen_settings_button_opens_settings_panel
+    //
+    // Behavioural smoke test of the start-screen → Settings flow:
+    //   1. Seed Bridge.quick-actions with the OpenSettings entry that
+    //      `default_quick_actions()` ships in production (src/lib.rs).
+    //   2. Locate the rendered QuickActionButton by its accessible label.
+    //   3. Invoke its default accessibility action (equivalent to a click /
+    //      Space / Enter on a focused button).
+    //   4. Assert PanelBridge transitioned to Panel::Settings.
+    //
+    // This exercises the full CastControlBar wiring — the for-loop repeater,
+    // the QuickActionButton's accessible-action-default handler, and the
+    // PanelBridge.push dispatch in control_bar.slint — without touching Rust
+    // callbacks or the real Android event loop.
+    {
+        let ui = MainWindow::new().expect("MainWindow::new");
+        wire_panel_bridge(&ui);
+        let pb = ui.global::<PanelBridge>();
+        let bridge = ui.global::<Bridge>();
+
+        let actions = std::rc::Rc::new(slint::VecModel::from(vec![QuickAction {
+            kind: QuickActionKind::OpenSettings,
+            title: "Settings".into(),
+            macro_id: "".into(),
+            custom_id: "".into(),
+            enabled: true,
+            active: false,
+        }]));
+        bridge.set_quick_actions(actions.into());
+
+        assert_eq!(
+            pb.get_active(),
+            Panel::None,
+            "home screen starts with no panel open"
+        );
+
+        // QuickActionButton exposes label "Settings" twice in the tree: once
+        // on the button itself (role=button) and once on its inner `Text`
+        // child (role=text — Slint auto-derives accessible-label from a
+        // Text's content). Filter by AccessibleRole::Button to pick the
+        // interactive element. (Conditional `if cond: Component {}` branches
+        // are NOT instantiated when cond is false, so panels currently
+        // gated off by PanelBridge.active do not contribute matches.)
+        let buttons: Vec<_> = ElementHandle::find_by_accessible_label(&ui, "Settings")
+            .filter(|el| el.accessible_role() == Some(AccessibleRole::Button))
+            .collect();
+        assert_eq!(
+            buttons.len(),
+            1,
+            "exactly one Settings quick-action button is rendered on the home screen"
+        );
+
+        buttons[0].invoke_accessible_default_action();
+
+        assert_eq!(
+            pb.get_active(),
+            Panel::Settings,
+            "tapping the Settings quick-action opens Panel::Settings"
         );
     }
 }

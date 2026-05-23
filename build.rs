@@ -1,10 +1,18 @@
 use std::env;
 
 fn main() {
-    slint_build::compile("ui/main.slint").unwrap();
+    let target = env::var("TARGET").unwrap();
+
+    // Host (non-Android) builds enable Slint debug info so that
+    // `i_slint_backend_testing::ElementHandle` can walk the element tree in
+    // tests/ui_snapshots.rs. Android builds skip it to keep the .so smaller.
+    let mut config = slint_build::CompilerConfiguration::new();
+    if !target.contains("android") {
+        config = config.with_debug_info(true);
+    }
+    slint_build::compile_with_config("ui/main.slint", config).unwrap();
 
     // Only Android builds need custom linker paths/libs.
-    let target = env::var("TARGET").unwrap();
     if !target.contains("android") {
         println!("cargo:rerun-if-changed=build.rs");
         println!("cargo:rerun-if-changed=ui/main.slint");
