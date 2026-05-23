@@ -1,0 +1,47 @@
+// state/test_functionality.slint — Test Functionality feature-scoped state.
+//
+// Follows the camera.slint / mixer.slint pattern.
+
+import { MixerState, SrtSource } from "../bridge.slint";
+
+export global TestFunctionality {
+    // ── Camera source ─────────────────────────────────────────────────
+    in-out property <int>   camera-idx:           1;
+    in-out property <int>   resolution-idx:       2;
+    in-out property <int>   framerate-idx:        1;
+    in-out property <bool>  camera-mirror:        false;
+    in-out property <bool>  camera-stabilization: true;
+    in-out property <float> camera-zoom:          1.0;
+
+    // ── SRT source ────────────────────────────────────────────────────
+    in-out property <SrtSource> srt-source: {
+        slot-id:    "test-srt",
+        enabled:    true,
+        uri:        "",
+        latency-ms: 2000,
+        stream-id:  "",
+        mix-alpha:  1.0,
+        mix-zorder: 0,
+        mix-volume: 1.0,
+        state:      MixerState.idle,
+        last-error: "",
+    };
+
+    // ── Image overlay ─────────────────────────────────────────────────
+    in-out property <string> overlay-image-path: "";
+    in-out property <bool>   overlay-enabled:    false;
+    in-out property <float>  overlay-x:          0;
+    in-out property <float>  overlay-y:          0;
+    in-out property <float>  overlay-width:      320;
+    in-out property <float>  overlay-height:     180;
+    in-out property <float>  overlay-alpha:      1.0;
+    in-out property <int>    overlay-z-order:    10;
+
+    // ── Test lifecycle ────────────────────────────────────────────────
+    in property <MixerState> state:      MixerState.idle;
+    in property <string>     error-text: "";
+
+    callback start-test();
+    callback stop-test();
+    callback pick-overlay-image();
+}

@@ -56,10 +56,10 @@ export { Bridge, AppState, Panel }
 // ── Per-feature globals: re-export so slint_build generates Rust bindings ────
 import { SafeArea, AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
          Casting, Receivers, History, Macros, Quickbar, BitratePresets,
-         Network, Mixer, DebugLog, Camera, Audio } from "state/index.slint";
+         Network, Mixer, DebugLog, Camera, Audio, TestFunctionality } from "state/index.slint";
 export { SafeArea, AppBridge, PanelBridge, BannerBridge, MediaBackend, Recording,
          Casting, Receivers, History, Macros, Quickbar, BitratePresets,
-         Network, Mixer, DebugLog, Camera, Audio }
+         Network, Mixer, DebugLog, Camera, Audio, TestFunctionality }
 
 // ── Page component imports ────────────────────────────────────────────────────
 import { ConnectView }                   from "pages/connect_page.slint";
@@ -87,6 +87,7 @@ import { DebugVideoPage }               from "pages/debug_video_page.slint";
 import { NetworkPage }                  from "pages/network_page.slint";
 import { MixerPage }                    from "pages/mixer_page.slint";
 import { MediaBackendPage }             from "pages/media_backend_page.slint";
+import { TestFunctionalityPage }        from "pages/test_functionality_page.slint";
 import { Theme } from "theme.slint";
 import { CastControlBar } from "components/control_bar.slint";
 import { InfoBanner } from "components/info_banner.slint";
@@ -177,6 +178,7 @@ export component MainWindow inherits Window {
             if PanelBridge.active == Panel.network:             NetworkPage             { }
             if PanelBridge.active == Panel.mixer:               MixerPage               { }
             if PanelBridge.active == Panel.media-backend:       MediaBackendPage        { }
+            if PanelBridge.active == Panel.test-functionality:  TestFunctionalityPage   { }
         }
 
         // ── Global banner overlay ─────────────────────────────────────────────────

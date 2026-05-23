@@ -133,6 +133,7 @@ export enum Panel {
     network,
     mixer,
     media-backend,
+    test-functionality,
 }
 
 export struct QuickAction {
@@ -401,6 +402,43 @@ export global Bridge {
     callback apply-mixer-slot-config(string, float, int, float);
     // (width-px, height-px, sample-rate-hz)
     callback apply-mixer-canvas(int, int, int);
+
+    // ── Test functionality (test-functionality panel) ────────────────────
+    in-out property <int>    test-camera-idx:           1;
+    in-out property <int>    test-resolution-idx:       2;
+    in-out property <int>    test-framerate-idx:        1;
+    in-out property <bool>   test-camera-mirror:        false;
+    in-out property <bool>   test-camera-stabilization: true;
+    in-out property <float>  test-camera-zoom:          1.0;
+
+    in-out property <SrtSource> test-srt-source: {
+        slot-id:    "test-srt",
+        enabled:    true,
+        uri:        "",
+        latency-ms: 2000,
+        stream-id:  "",
+        mix-alpha:  1.0,
+        mix-zorder: 0,
+        mix-volume: 1.0,
+        state:      MixerState.idle,
+        last-error: "",
+    };
+
+    in-out property <string>  test-overlay-image-path: "";
+    in-out property <bool>    test-overlay-enabled:    false;
+    in-out property <float>   test-overlay-x:          0;
+    in-out property <float>   test-overlay-y:          0;
+    in-out property <float>   test-overlay-width:      320;
+    in-out property <float>   test-overlay-height:     180;
+    in-out property <float>   test-overlay-alpha:      1.0;
+    in-out property <int>     test-overlay-z-order:    10;
+
+    in property <MixerState> test-state:      MixerState.idle;
+    in property <string>     test-error-text: "";
+
+    callback start-test();
+    callback stop-test();
+    callback pick-test-overlay-image();
 
     // ── Public functions (callable from Slint) ───────────────────────────
     public function change-state(to: AppState) {
