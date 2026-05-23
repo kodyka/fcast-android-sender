@@ -2521,10 +2521,9 @@ fn android_main(app: PlatformApp) {
     }
 
     // ── Test functionality callbacks ─────────────────────────────────────
-    {
+    ui.global::<Bridge>().on_start_test({
         let ui_weak = ui.as_weak();
-        ui.global::<Bridge>().on_start_test(move || {
-            let ui_weak = ui_weak.clone();
+        move || {
             let _ = ui_weak.upgrade_in_event_loop(|ui| {
                 ui.global::<Bridge>().set_test_state(MixerState::Starting);
             });
@@ -2533,35 +2532,27 @@ fn android_main(app: PlatformApp) {
             // On success call set_test_state(MixerState::Running).
             // On error call set_test_state(MixerState::Error) + set_test_error_text.
             log::info!("start-test: stub — pipeline not yet implemented");
-        });
-    }
+        }
+    });
 
-    {
+    ui.global::<Bridge>().on_stop_test({
         let ui_weak = ui.as_weak();
-        ui.global::<Bridge>().on_stop_test(move || {
-            let ui_weak = ui_weak.clone();
-            let _ = ui_weak.upgrade_in_event_loop(|ui| {
-                ui.global::<Bridge>().set_test_state(MixerState::Stopping);
-            });
+        move || {
             // TODO: stop GStreamer test pipeline and release resources.
             let _ = ui_weak.upgrade_in_event_loop(|ui| {
                 ui.global::<Bridge>().set_test_state(MixerState::Idle);
                 ui.global::<Bridge>().set_test_error_text("".into());
             });
             log::info!("stop-test: stub — pipeline not yet implemented");
-        });
-    }
+        }
+    });
 
-    {
-        let ui_weak = ui.as_weak();
-        ui.global::<Bridge>().on_pick_test_overlay_image(move || {
-            // TODO(android): launch ACTION_GET_CONTENT intent via JNI, write
-            //   result back with set_test_overlay_image_path.
-            // TODO(desktop): use rfd::FileDialog to pick a file.
-            let _ = ui_weak.clone();
-            log::info!("pick-test-overlay-image: stub — file picker not yet implemented");
-        });
-    }
+    ui.global::<Bridge>().on_pick_test_overlay_image(|| {
+        // TODO(android): launch ACTION_GET_CONTENT intent via JNI, write
+        //   result back with set_test_overlay_image_path.
+        // TODO(desktop): use rfd::FileDialog to pick a file.
+        log::info!("pick-test-overlay-image: stub — file picker not yet implemented");
+    });
 
     let ui_weak = ui.as_weak();
 
