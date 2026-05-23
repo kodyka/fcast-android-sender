@@ -203,6 +203,11 @@ export component FullSettingsPage inherits Rectangle {
                             : @tr("gst-pop ({})", Bridge.gstpop-url);
                         clicked => { PanelBridge.push(Panel.media-backend); }
                     }
+                    SettingsValueRow {
+                        title: @tr("Test Functionality");
+                        value: "";
+                        clicked => { PanelBridge.push(Panel.test-functionality); }
+                    }
                 }
 
                 // ── Section: DATA ─────────────────────────────────────────

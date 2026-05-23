@@ -98,7 +98,9 @@ jobs:
           exit 1
 
       - name: Run gst-pop backend tests
-        run: cargo test backend::gstpop -- --include-ignored
+        # --test-threads=1 required: two ignored tests share process-global atomics
+        # (CLAIMED/READY/HANDLE/STATE) and race when run concurrently.
+        run: cargo test backend::gstpop -- --include-ignored --test-threads=1
 
       - name: Build GStreamer Android JNI glue
         run: bash ci/build-gstreamer-android-glue.sh
