@@ -1834,10 +1834,10 @@ fn android_main(app: PlatformApp) {
     });
     let backend_lifecycle =
         std::sync::Arc::new(backend::lifecycle::BackendLifecycle::new(files_dir));
-    backend_lifecycle.register(&ui);
+    Arc::clone(&backend_lifecycle).register(&ui);
 
     // ── Service abstraction wiring (STEP 13/14) ─────────────────────────
-    wire_service_bridges(&ui, Arc::clone(&backend_lifecycle));
+    wire_service_bridges(&ui, backend_lifecycle);
 
     // ── Phase 8 / Cluster D1 — Backup / reset handlers ──────────────────
     ui.global::<Bridge>().on_export_settings({
