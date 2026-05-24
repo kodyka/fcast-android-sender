@@ -37,10 +37,18 @@ mod android {
 }
 
 /// Ask the foreground GstPopService to start the daemon. Idempotent.
+/// Respects `config.gstpop_service.enabled` — returns early if disabled.
 #[cfg(target_os = "android")]
 pub fn request_service_start(config: &StoredBackendConfig) -> anyhow::Result<()> {
     use anyhow::Context;
     use jni::objects::JValue;
+
+    if let Some(ref svc) = config.gstpop_service {
+        if !svc.enabled {
+            tracing::info!("gst-pop service disabled by config; skipping start");
+            return Ok(());
+        }
+    }
 
     let ctx = crate::android_context().context("android_context")?;
     let mut env = ctx.vm.attach_current_thread().context("attach_current_thread")?;
@@ -126,7 +134,7 @@ impl ServiceManager for GstPopServiceManager {
         self.options.read().clone()
     }
 
-    fn set_options(&mut self, options: ServiceOptions) {
+    fn set_options(&self, options: ServiceOptions) {
         *self.options.write() = options;
     }
 

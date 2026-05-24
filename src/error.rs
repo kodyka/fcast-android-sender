@@ -95,3 +95,50 @@ impl From<anyhow::Error> for AppError {
         }
     }
 }
+
+/// Push an `AppError` to the UI banner with severity inferred from the variant.
+pub fn push_app_error(weak: &slint::Weak<crate::MainWindow>, err: &AppError) {
+    use slint::ComponentHandle;
+
+    let message = err.user_message();
+    let severity = match err {
+        AppError::ServiceUnavailable { .. }
+        | AppError::SrtError { .. }
+        | AppError::NetworkError { .. } => crate::BannerSeverity::Warning,
+        AppError::PipelineError { .. }
+        | AppError::OverlayError { .. }
+        | AppError::ConfigError { .. }
+        | AppError::Internal { .. } => crate::BannerSeverity::Error,
+    };
+    let _ = weak.upgrade_in_event_loop(move |ui| {
+        let bridge = ui.global::<crate::Bridge>();
+        bridge.set_banner_message(message.into());
+        bridge.set_banner_severity(severity);
+        bridge.set_banner_visible(true);
+    });
+}
+
+/// Best-effort recovery for retriable errors. Returns true when a recovery
+/// action was dispatched, false when the caller should surface the error.
+pub fn try_recover(
+    err: &AppError,
+    manager: &dyn crate::service::ServiceManager,
+) -> bool {
+    if !err.is_retriable() {
+        return false;
+    }
+    let mgr_name = manager.name().to_string();
+    tokio::spawn({
+        let mgr = manager.options();
+        async move {
+            let _ = mgr;
+            tracing::info!(service = %mgr_name, "try_recover: dispatching auto-restart");
+            if let Some(handle) = crate::service::registry::lookup(&mgr_name) {
+                if let Err(e) = handle.start().await {
+                    tracing::warn!(error = %e, service = %mgr_name, "auto-recovery start failed");
+                }
+            }
+        }
+    });
+    true
+}

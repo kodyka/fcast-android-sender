@@ -1836,6 +1836,9 @@ fn android_main(app: PlatformApp) {
         std::sync::Arc::new(backend::lifecycle::BackendLifecycle::new(files_dir));
     backend_lifecycle.register(&ui);
 
+    // ── Service abstraction wiring (STEP 13/14) ─────────────────────────
+    wire_service_bridges(&ui, Arc::clone(&backend_lifecycle));
+
     // ── Phase 8 / Cluster D1 — Backup / reset handlers ──────────────────
     ui.global::<Bridge>().on_export_settings({
         let ui_weak = ui.as_weak();
@@ -3019,6 +3022,437 @@ fn parse_gstpop_config_port(json: &str) -> Option<u16> {
     let v: serde_json::Value = serde_json::from_str(json).ok()?;
     let url = v.get("gstpop_url")?.as_str()?;
     Some(crate::backend::gstpop::embedded::url_port(url))
+}
+
+// ── Service abstraction wiring (STEP 13/14) ───────────────────────────────────
+
+fn wire_service_bridges(
+    ui: &MainWindow,
+    lifecycle: Arc<backend::lifecycle::BackendLifecycle>,
+) {
+    use crate::service::ServiceManager;
+
+    let initial_config = lifecycle.initial_config().clone();
+    let files_dir = lifecycle.files_dir().to_path_buf();
+    let managers = crate::service::registry::init(&initial_config);
+
+    // Push initial ServiceConfig snapshot to the UI.
+    push_service_config(&ui.as_weak(), &initial_config);
+    // Push an initial ServiceEntry list so the page is non-empty on first paint.
+    push_service_entries_blocking(ui, managers);
+
+    // ServiceConfigBridge.on_save_config — persist + reapply.
+    {
+        let files_dir = files_dir.clone();
+        let weak = ui.as_weak();
+        ui.global::<ServiceConfigBridge>().on_save_config(move |slint_cfg: ServiceConfig| {
+            let files_dir = files_dir.clone();
+            let weak = weak.clone();
+            let rust_cfg = stored_from_slint(&slint_cfg);
+            tokio::spawn(async move {
+                if let Err(err) = rust_cfg.save(&files_dir) {
+                    tracing::error!(?err, "save ServiceConfig failed");
+                }
+                if let Some(mgrs) = crate::service::registry::get() {
+                    mgrs.gstpop.set_options(rust_cfg.gstpop_opts());
+                    mgrs.migration.set_options(rust_cfg.migration_opts());
+                }
+                push_service_config(&weak, &rust_cfg);
+            });
+        });
+    }
+
+    // ServiceConfigBridge.on_reset_config — restore defaults.
+    {
+        let files_dir = files_dir.clone();
+        let weak = ui.as_weak();
+        ui.global::<ServiceConfigBridge>().on_reset_config(move || {
+            let files_dir = files_dir.clone();
+            let weak = weak.clone();
+            tokio::spawn(async move {
+                let defaults = crate::backend::persistence::StoredBackendConfig::defaults();
+                if let Err(err) = defaults.save(&files_dir) {
+                    tracing::error!(?err, "save default ServiceConfig failed");
+                }
+                if let Some(mgrs) = crate::service::registry::get() {
+                    mgrs.gstpop.set_options(defaults.gstpop_opts());
+                    mgrs.migration.set_options(defaults.migration_opts());
+                }
+                push_service_config(&weak, &defaults);
+            });
+        });
+    }
+
+    // ServiceBridge.on_request_service_op — generic start/stop/probe dispatch.
+    {
+        let weak = ui.as_weak();
+        ui.global::<ServiceBridge>().on_request_service_op(move |id: slint::SharedString, op: MediaOp| {
+            let id_str = id.to_string();
+            let Some(mgr) = crate::service::registry::lookup(&id_str) else {
+                tracing::warn!(id = %id_str, "request_service_op: unknown service id");
+                return;
+            };
+            let weak = weak.clone();
+            tokio::spawn(async move {
+                let result = match op {
+                    MediaOp::Start => mgr.start().await,
+                    MediaOp::Stop => mgr.stop().await,
+                    MediaOp::Probe => mgr.status().await,
+                };
+                if let Err(err) = &result {
+                    tracing::error!(?err, "service op failed");
+                }
+                if let Some(mgrs) = crate::service::registry::get() {
+                    refresh_service_entries(&weak, mgrs).await;
+                }
+            });
+        });
+    }
+
+    // 1Hz push_services poller.
+    {
+        let weak = ui.as_weak();
+        tokio::spawn(async move {
+            let mut ticker =
+                tokio::time::interval(std::time::Duration::from_millis(1000));
+            loop {
+                ticker.tick().await;
+                let Some(mgrs) = crate::service::registry::get() else { continue };
+                refresh_service_entries(&weak, mgrs).await;
+            }
+        });
+    }
+
+    // Bridge overlay callbacks (mixer page).
+    {
+        let weak = ui.as_weak();
+        ui.global::<Bridge>().on_add_overlay(move |item: OverlayItem| {
+            if let Some(mgrs) = crate::service::registry::get() {
+                mgrs.overlay.upsert(overlay_from_slint(&item));
+                push_overlays(&weak, mgrs);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.global::<Bridge>().on_remove_overlay(move |id: slint::SharedString| {
+            if let Some(mgrs) = crate::service::registry::get() {
+                mgrs.overlay.remove(&id);
+                push_overlays(&weak, mgrs);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.global::<Bridge>().on_update_overlay(move |item: OverlayItem| {
+            if let Some(mgrs) = crate::service::registry::get() {
+                mgrs.overlay.upsert(overlay_from_slint(&item));
+                push_overlays(&weak, mgrs);
+            }
+        });
+    }
+
+    // SrtConfig callbacks.
+    {
+        let weak = ui.as_weak();
+        ui.global::<SrtConfig>().on_add_source(move || {
+            if let Some(mgrs) = crate::service::registry::get() {
+                let slot_id = format!("srt-{}", uuid::Uuid::new_v4());
+                mgrs.srt.upsert_slot(crate::srt::SrtSourceConfig {
+                    slot_id,
+                    ..Default::default()
+                });
+                push_srt_sources(&weak, mgrs);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.global::<SrtConfig>().on_remove_source(move |slot_id: slint::SharedString| {
+            if let Some(mgrs) = crate::service::registry::get() {
+                mgrs.srt.remove_slot(&slot_id);
+                push_srt_sources(&weak, mgrs);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.global::<SrtConfig>().on_update_source(move |src: SrtSource| {
+            if let Some(mgrs) = crate::service::registry::get() {
+                mgrs.srt.upsert_slot(srt_config_from_slint(&src));
+                push_srt_sources(&weak, mgrs);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.global::<SrtConfig>().on_add_overlay(move |item: OverlayItem| {
+            if let Some(mgrs) = crate::service::registry::get() {
+                mgrs.overlay.upsert(overlay_from_slint(&item));
+                push_srt_overlays(&weak, mgrs);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.global::<SrtConfig>().on_remove_overlay(move |id: slint::SharedString| {
+            if let Some(mgrs) = crate::service::registry::get() {
+                mgrs.overlay.remove(&id);
+                push_srt_overlays(&weak, mgrs);
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.global::<SrtConfig>().on_update_overlay(move |item: OverlayItem| {
+            if let Some(mgrs) = crate::service::registry::get() {
+                mgrs.overlay.upsert(overlay_from_slint(&item));
+                push_srt_overlays(&weak, mgrs);
+            }
+        });
+    }
+
+    // SRT health monitor — auto-reconnect background task.
+    let _srt_health = managers.srt.spawn_health_monitor();
+}
+
+fn push_service_entries_blocking(
+    ui: &MainWindow,
+    mgrs: &'static crate::service::registry::ServiceManagers,
+) {
+    let entries = build_service_entries_from_options(mgrs);
+    let any_ready = entries.iter().any(|e| e.running && e.healthy);
+    ui.global::<ServiceBridge>()
+        .set_services(std::rc::Rc::new(slint::VecModel::from(entries)).into());
+    ui.global::<ServiceBridge>().set_any_service_ready(any_ready);
+}
+
+fn build_service_entries_from_options(
+    mgrs: &crate::service::registry::ServiceManagers,
+) -> Vec<ServiceEntry> {
+    use crate::service::ServiceManager;
+    vec![
+        ServiceEntry {
+            id: "gstpop".into(),
+            label: "gst-pop".into(),
+            enabled: mgrs.gstpop.options().enabled,
+            running: false,
+            healthy: true,
+            status_text: "".into(),
+            error_text: "".into(),
+        },
+        ServiceEntry {
+            id: "migration".into(),
+            label: "migration".into(),
+            enabled: mgrs.migration.options().enabled,
+            running: false,
+            healthy: true,
+            status_text: "".into(),
+            error_text: "".into(),
+        },
+    ]
+}
+
+async fn refresh_service_entries(
+    weak: &slint::Weak<MainWindow>,
+    mgrs: &'static crate::service::registry::ServiceManagers,
+) {
+    use crate::service::ServiceManager;
+
+    let mut entries: Vec<ServiceEntry> = Vec::with_capacity(2);
+    for (id, label, mgr) in [
+        ("gstpop", "gst-pop", Arc::clone(&mgrs.gstpop) as Arc<dyn ServiceManager>),
+        ("migration", "migration", Arc::clone(&mgrs.migration) as Arc<dyn ServiceManager>),
+    ] {
+        let opts = mgr.options();
+        let status = mgr.status().await.unwrap_or_default();
+        entries.push(ServiceEntry {
+            id: id.into(),
+            label: label.into(),
+            enabled: opts.enabled,
+            running: status.running,
+            healthy: status.healthy,
+            status_text: status.status_text.into(),
+            error_text: status.error_text.into(),
+        });
+    }
+    let any_ready = entries.iter().any(|e| e.running && e.healthy);
+    let _ = weak.upgrade_in_event_loop(move |ui| {
+        ui.global::<ServiceBridge>()
+            .set_services(std::rc::Rc::new(slint::VecModel::from(entries)).into());
+        ui.global::<ServiceBridge>().set_any_service_ready(any_ready);
+    });
+}
+
+fn push_overlays(
+    weak: &slint::Weak<MainWindow>,
+    mgrs: &'static crate::service::registry::ServiceManagers,
+) {
+    let items: Vec<OverlayItem> = mgrs.overlay.all().iter().map(overlay_to_slint).collect();
+    let _ = weak.upgrade_in_event_loop(move |ui| {
+        ui.global::<Bridge>()
+            .set_overlays(std::rc::Rc::new(slint::VecModel::from(items)).into());
+    });
+}
+
+fn push_srt_overlays(
+    weak: &slint::Weak<MainWindow>,
+    mgrs: &'static crate::service::registry::ServiceManagers,
+) {
+    let items: Vec<OverlayItem> = mgrs.overlay.all().iter().map(overlay_to_slint).collect();
+    let _ = weak.upgrade_in_event_loop(move |ui| {
+        ui.global::<SrtConfig>()
+            .set_overlays(std::rc::Rc::new(slint::VecModel::from(items)).into());
+    });
+}
+
+fn push_srt_sources(
+    weak: &slint::Weak<MainWindow>,
+    mgrs: &'static crate::service::registry::ServiceManagers,
+) {
+    let mut sources: Vec<SrtSource> = mgrs
+        .srt
+        .snapshot()
+        .into_values()
+        .map(srt_state_to_slint)
+        .collect();
+    sources.sort_by(|a, b| a.slot_id.cmp(&b.slot_id));
+    let _ = weak.upgrade_in_event_loop(move |ui| {
+        ui.global::<SrtConfig>()
+            .set_sources(std::rc::Rc::new(slint::VecModel::from(sources)).into());
+    });
+}
+
+fn push_service_config(
+    weak: &slint::Weak<MainWindow>,
+    cfg: &crate::backend::persistence::StoredBackendConfig,
+) {
+    let slint_cfg = ServiceConfig {
+        gstpop_enabled: cfg.gstpop_opts().enabled,
+        migration_runtime_enabled: cfg.migration_opts().enabled,
+        auto_start_services: cfg.auto_start_services,
+        service_mode: rust_mode_to_slint(cfg.service_mode),
+    };
+    let _ = weak.upgrade_in_event_loop(move |ui| {
+        ui.global::<ServiceConfigBridge>().set_config(slint_cfg);
+    });
+}
+
+fn stored_from_slint(
+    cfg: &ServiceConfig,
+) -> crate::backend::persistence::StoredBackendConfig {
+    use crate::service::{ServiceMode as RustMode, ServiceOptions};
+    let mode = slint_mode_to_rust(cfg.service_mode);
+    let mut stored = crate::backend::persistence::StoredBackendConfig::defaults();
+    stored.gstpop_service = Some(ServiceOptions {
+        enabled: cfg.gstpop_enabled,
+        auto_start: cfg.auto_start_services,
+        mode,
+    });
+    stored.migration_service = Some(ServiceOptions {
+        enabled: cfg.migration_runtime_enabled,
+        auto_start: cfg.auto_start_services,
+        mode: RustMode::Embedded,
+    });
+    stored.auto_start_services = cfg.auto_start_services;
+    stored.service_mode = mode;
+    stored
+}
+
+fn rust_mode_to_slint(mode: crate::service::ServiceMode) -> ServiceMode {
+    match mode {
+        crate::service::ServiceMode::Embedded => ServiceMode::Embedded,
+        crate::service::ServiceMode::AndroidService => ServiceMode::AndroidService,
+        crate::service::ServiceMode::External => ServiceMode::External,
+    }
+}
+
+fn slint_mode_to_rust(mode: ServiceMode) -> crate::service::ServiceMode {
+    match mode {
+        ServiceMode::Embedded => crate::service::ServiceMode::Embedded,
+        ServiceMode::AndroidService => crate::service::ServiceMode::AndroidService,
+        ServiceMode::External => crate::service::ServiceMode::External,
+    }
+}
+
+fn overlay_from_slint(item: &OverlayItem) -> crate::overlay::OverlayConfig {
+    let src_str = item.source.to_string();
+    let source = if src_str.starts_with("http://") || src_str.starts_with("https://") {
+        crate::overlay::OverlaySource::Url(src_str)
+    } else {
+        crate::overlay::OverlaySource::File(std::path::PathBuf::from(src_str))
+    };
+    crate::overlay::OverlayConfig {
+        id: item.id.to_string(),
+        slot_id: item.slot_id.to_string(),
+        visible: item.visible,
+        source,
+        rect: crate::overlay::OverlayRect {
+            x: item.x,
+            y: item.y,
+            width: item.width.max(0) as u32,
+            height: item.height.max(0) as u32,
+        },
+        alpha: item.alpha as f64,
+        z_order: item.z_order,
+    }
+}
+
+fn overlay_to_slint(cfg: &crate::overlay::OverlayConfig) -> OverlayItem {
+    let source = match &cfg.source {
+        crate::overlay::OverlaySource::File(p) => p.display().to_string(),
+        crate::overlay::OverlaySource::Url(u) => u.clone(),
+    };
+    OverlayItem {
+        id: cfg.id.clone().into(),
+        slot_id: cfg.slot_id.clone().into(),
+        visible: cfg.visible,
+        source: source.into(),
+        x: cfg.rect.x,
+        y: cfg.rect.y,
+        width: cfg.rect.width as i32,
+        height: cfg.rect.height as i32,
+        alpha: cfg.alpha as f32,
+        z_order: cfg.z_order,
+    }
+}
+
+fn srt_config_from_slint(src: &SrtSource) -> crate::srt::SrtSourceConfig {
+    let defaults = crate::srt::SrtSourceConfig::default();
+    crate::srt::SrtSourceConfig {
+        slot_id: src.slot_id.to_string(),
+        enabled: src.enabled,
+        uri: src.uri.to_string(),
+        latency_ms: src.latency_ms.max(0) as u32,
+        stream_id: src.stream_id.to_string(),
+        mix_alpha: src.mix_alpha as f64,
+        mix_zorder: src.mix_zorder,
+        mix_volume: src.mix_volume as f64,
+        max_retries: defaults.max_retries,
+        retry_delay_ms: defaults.retry_delay_ms,
+    }
+}
+
+fn srt_state_to_slint(state: crate::srt::SrtSourceState) -> SrtSource {
+    let mixer_state = match state.connection {
+        crate::srt::SrtConnectionState::Disconnected => MixerState::Idle,
+        crate::srt::SrtConnectionState::Connecting
+        | crate::srt::SrtConnectionState::Reconnecting => MixerState::Starting,
+        crate::srt::SrtConnectionState::Connected => MixerState::Running,
+        crate::srt::SrtConnectionState::Error => MixerState::Error,
+    };
+    SrtSource {
+        slot_id: state.config.slot_id.into(),
+        enabled: state.config.enabled,
+        uri: state.config.uri.into(),
+        latency_ms: state.config.latency_ms as i32,
+        stream_id: state.config.stream_id.into(),
+        mix_alpha: state.config.mix_alpha as f32,
+        mix_zorder: state.config.mix_zorder,
+        mix_volume: state.config.mix_volume as f32,
+        state: mixer_state,
+        last_error: state.last_error.unwrap_or_default().into(),
+    }
 }
 
 #[cfg(test)]

@@ -28,6 +28,14 @@ impl BackendLifecycle {
         }
     }
 
+    pub fn files_dir(&self) -> &std::path::Path {
+        &self.files_dir
+    }
+
+    pub fn initial_config(&self) -> &StoredBackendConfig {
+        &self.initial_config
+    }
+
     pub fn register(self: Arc<Self>, ui: &MainWindow) {
         push_config(&ui.as_weak(), &self.initial_config);
 
@@ -129,8 +137,12 @@ impl BackendLifecycle {
     fn autostart(self: Arc<Self>, weak: Weak<MainWindow>) {
         use super::gstpop::{embedded, service};
 
+        let gstpop_auto_start = self.initial_config.gstpop_opts().auto_start
+            && self.initial_config.auto_start_services;
+
         if self.initial_config.kind == BackendKind::GstPop
             && embedded::is_localhost(&self.initial_config.gstpop_url)
+            && gstpop_auto_start
         {
             if let Err(err) = service::request_service_start(&self.initial_config) {
                 tracing::error!(?err, "autostart: request_service_start failed");

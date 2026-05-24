@@ -15,7 +15,7 @@ async fn mock_service_start_stop() {
 
 #[tokio::test]
 async fn disabled_service_options_accessible() {
-    let mut svc = MockServiceManager::new("test-service");
+    let svc = MockServiceManager::new("test-service");
     svc.set_options(ServiceOptions {
         enabled: false,
         auto_start: false,

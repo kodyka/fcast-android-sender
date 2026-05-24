@@ -257,4 +257,83 @@ fn ui_snapshots_all() {
             "tapping the Settings quick-action opens Panel::Settings"
         );
     }
+
+    // ── Service / SRT config pages (STEP-15) ─────────────────────────────
+
+    // 8. service_config_page_mounts_and_save_button_dispatches
+    //
+    // Push the ServiceConfig panel, wire the save-config callback, and
+    // assert the bottom-bar buttons render in the accessibility tree.
+    {
+        let ui = MainWindow::new().expect("MainWindow::new");
+        wire_panel_bridge(&ui);
+
+        let save_called = std::rc::Rc::new(std::cell::Cell::new(false));
+        let reset_called = std::rc::Rc::new(std::cell::Cell::new(false));
+
+        ui.global::<ServiceConfigBridge>().on_save_config({
+            let save_called = save_called.clone();
+            move |_| {
+                save_called.set(true);
+            }
+        });
+        ui.global::<ServiceConfigBridge>().on_reset_config({
+            let reset_called = reset_called.clone();
+            move || {
+                reset_called.set(true);
+            }
+        });
+
+        ui.global::<PanelBridge>().invoke_push(Panel::ServiceConfig);
+        assert_eq!(
+            ui.global::<PanelBridge>().get_active(),
+            Panel::ServiceConfig
+        );
+
+        // PrimaryButton "Apply & Save" must be reachable; click it.
+        let save_buttons: Vec<_> =
+            ElementHandle::find_by_accessible_label(&ui, "Apply & Save")
+                .filter(|el| el.accessible_role() == Some(AccessibleRole::Button))
+                .collect();
+        assert_eq!(save_buttons.len(), 1, "Apply & Save button renders once");
+        save_buttons[0].invoke_accessible_default_action();
+        assert!(save_called.get(), "save-config callback fires on tap");
+
+        // Reset button — same shape.
+        let reset_buttons: Vec<_> =
+            ElementHandle::find_by_accessible_label(&ui, "Reset")
+                .filter(|el| el.accessible_role() == Some(AccessibleRole::Button))
+                .collect();
+        assert_eq!(reset_buttons.len(), 1, "Reset button renders once");
+        reset_buttons[0].invoke_accessible_default_action();
+        assert!(reset_called.get(), "reset-config callback fires on tap");
+    }
+
+    // 9. srt_config_page_mounts_and_add_source_dispatches
+    //
+    // Push the SrtConfig panel, wire add-source, and assert the
+    // "+ Add SRT Source" button reaches Rust via the accessibility tree.
+    {
+        let ui = MainWindow::new().expect("MainWindow::new");
+        wire_panel_bridge(&ui);
+
+        let add_called = std::rc::Rc::new(std::cell::Cell::new(false));
+        ui.global::<SrtConfig>().on_add_source({
+            let add_called = add_called.clone();
+            move || {
+                add_called.set(true);
+            }
+        });
+
+        ui.global::<PanelBridge>().invoke_push(Panel::SrtConfig);
+        assert_eq!(ui.global::<PanelBridge>().get_active(), Panel::SrtConfig);
+
+        let add_buttons: Vec<_> =
+            ElementHandle::find_by_accessible_label(&ui, "+ Add SRT Source")
+                .filter(|el| el.accessible_role() == Some(AccessibleRole::Button))
+                .collect();
+        assert_eq!(add_buttons.len(), 1, "+ Add SRT Source button renders once");
+        add_buttons[0].invoke_accessible_default_action();
+        assert!(add_called.get(), "add-source callback fires on tap");
+    }
 }

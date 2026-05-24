@@ -56,8 +56,10 @@ pub trait ServiceManager: Send + Sync {
     /// Current options (enabled, auto-start, mode).
     fn options(&self) -> ServiceOptions;
 
-    /// Mutate options at runtime.
-    fn set_options(&mut self, options: ServiceOptions);
+    /// Mutate options at runtime. Takes `&self` so the manager can be
+    /// stored as `Arc<dyn ServiceManager>` in a registry — impls use
+    /// interior mutability (RwLock) on their options.
+    fn set_options(&self, options: ServiceOptions);
 
     /// Bring the service up. Idempotent — calling twice is safe.
     async fn start(&self) -> Result<ServiceStatus>;
@@ -70,3 +72,4 @@ pub trait ServiceManager: Send + Sync {
 }
 
 pub mod mock;
+pub mod registry;

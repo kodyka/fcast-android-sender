@@ -32,7 +32,7 @@ impl ServiceManager for MockServiceManager {
         self.options.read().clone()
     }
 
-    fn set_options(&mut self, options: ServiceOptions) {
+    fn set_options(&self, options: ServiceOptions) {
         *self.options.write() = options;
     }
 
