@@ -3043,6 +3043,79 @@ fn parse_gstpop_config_port(json: &str) -> Option<u16> {
     Some(crate::backend::gstpop::embedded::url_port(url))
 }
 
+// ── migration runtime service host JNI bridge ────────────────────────────────
+// Symbols match MigrationRuntimeServiceBridge in the
+// `org.fcast.android.sender` package.
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_nativeStartMigrationRuntimeHost<
+    'local,
+>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+    _config_json: jni::objects::JString<'local>,
+) -> jni::sys::jstring {
+    // Migration runtime currently has no start-time config; the JString is
+    // accepted for API symmetry with GstPopServiceBridge and ignored.
+    let json = match crate::migration::runtime::start_graph_runtime() {
+        Ok(()) => migration_runtime_status_json("running", None),
+        Err(err) => migration_runtime_status_json("error", Some(&err.to_string())),
+    };
+    env.new_string(json).expect("new_string").into_raw()
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_nativeStopMigrationRuntimeHost<
+    'local,
+>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+) -> jni::sys::jstring {
+    let json = match crate::migration::runtime::shutdown_graph_runtime() {
+        Ok(()) => migration_runtime_status_json("stopped", None),
+        Err(err) => migration_runtime_status_json("error", Some(&err.to_string())),
+    };
+    env.new_string(json).expect("new_string").into_raw()
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_nativeGetMigrationRuntimeStatus<
+    'local,
+>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+) -> jni::sys::jstring {
+    // try_handle_command_json never panics and always returns a JSON string,
+    // either {"id":null,"result":…} on success or {"id":null,"result":{"error":…}}.
+    // We use it as a liveness probe.
+    let probe = crate::migration::runtime::try_handle_command_json(r#"{"getinfo":{}}"#);
+    let state = if probe.contains("\"result\"") && !probe.contains("\"error\"") {
+        "running"
+    } else {
+        "stopped"
+    };
+    let json = migration_runtime_status_json(state, None);
+    env.new_string(json).expect("new_string").into_raw()
+}
+
+#[cfg(target_os = "android")]
+fn migration_runtime_status_json(state: &str, last_error: Option<&str>) -> String {
+    let mut value = serde_json::json!({ "state": state });
+    if let Some(err) = last_error {
+        value["last_error"] = serde_json::Value::String(err.to_string());
+    }
+    serde_json::to_string(&value).unwrap_or_else(|_| {
+        format!("{{\"state\":\"{}\"}}", state.replace('"', "'"))
+    })
+}
+
+
 #[cfg(test)]
 mod phase9_dispatch_tests {
     use super::migration_test_log_name;

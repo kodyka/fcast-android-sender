@@ -14,7 +14,12 @@
       "Bash(sed -n '48,60p' /Users/test/Documents/work/fcast-android-sender/ui/pages/debug_page.slint)",
       "Bash(sed -n '65,100p' /Users/test/Documents/work/fcast-android-sender/ui/pages/macro_edit_page.slint)",
       "mcp__plugin_claude-code-home-manager_filesystem__directory_tree",
-      "mcp__plugin_claude-code-home-manager_filesystem__list_directory"
+      "mcp__plugin_claude-code-home-manager_filesystem__list_directory",
+      "Bash(command -v nix-shell)",
+      "Bash(gh pr create --title 'ci: add slint-viewer smoke test for ui/main.slint' --body ' *)",
+      "Bash(gh pr *)",
+      "Bash(~/.cargo/bin/cargo test *)",
+      "Bash(git *)"
     ]
   }
 }
