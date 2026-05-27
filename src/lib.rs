@@ -931,6 +931,7 @@ impl Application {
     async fn handle_event(&mut self, event: Event) -> Result<ShouldQuit> {
         debug!("Handling event: {event:?}");
 
+        #[allow(unreachable_patterns)]
         match event {
             Event::EndSession { .. } => {
                 self.ui_weak.upgrade_in_event_loop(|ui| {
