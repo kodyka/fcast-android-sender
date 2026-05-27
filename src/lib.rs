@@ -3092,11 +3092,7 @@ pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_na
     mut env: jni::JNIEnv<'local>,
     _class: jni::objects::JClass<'local>,
 ) -> jni::sys::jstring {
-    // try_handle_command_json never panics and always returns a JSON string,
-    // either {"id":null,"result":…} on success or {"id":null,"result":{"error":…}}.
-    // We use it as a liveness probe.
-    let probe = crate::migration::runtime::try_handle_command_json(r#"{"getinfo":{}}"#);
-    let state = if probe.contains("\"result\"") && !probe.contains("\"error\"") {
+    let state = if crate::migration::runtime::is_running() {
         "running"
     } else {
         "stopped"

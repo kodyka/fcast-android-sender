@@ -177,6 +177,18 @@ impl BackendLifecycle {
                         return;
                     }
                     b.set_migration_runtime_service_state(state_str.into());
+                    // Keep the top-level status pill in sync when migration is the
+                    // active backend — poller is the single source of truth.
+                    if b.get_media_backend() == crate::MediaBackendKind::Migration {
+                        let (mbs, text): (crate::MediaBackendState, &str) = match state_str {
+                            "running"  => (crate::MediaBackendState::Ready,        "Migration runtime running"),
+                            "starting" => (crate::MediaBackendState::Starting,     ""),
+                            "error"    => (crate::MediaBackendState::Error,        ""),
+                            _          => (crate::MediaBackendState::Disconnected, "Migration runtime stopped"),
+                        };
+                        b.set_media_backend_state(mbs);
+                        b.set_media_backend_status_text(text.into());
+                    }
                 });
             }
         });
@@ -319,7 +331,12 @@ fn push_saved(weak: &Weak<MainWindow>) {
 fn push_status(weak: &Weak<MainWindow>, status: BackendStatus) {
     let _ = weak.upgrade_in_event_loop(move |ui| {
         let bridge = ui.global::<crate::Bridge>();
-        bridge.set_media_backend_state(crate::MediaBackendState::Ready);
+        let state = if status.is_connected {
+            crate::MediaBackendState::Ready
+        } else {
+            crate::MediaBackendState::Disconnected
+        };
+        bridge.set_media_backend_state(state);
         bridge.set_media_backend_status_text(status.status_text.into());
         bridge.set_media_backend_error_text(status.error_text.into());
     });

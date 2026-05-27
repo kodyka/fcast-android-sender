@@ -29,7 +29,7 @@ export component StatusPill inherits Rectangle {
         }
         starting    when root.state == MediaBackendState.starting    : {
             dot-color:  Theme.warning;
-            dot-label:  @tr("Starting gst-pop service\u{2026}");
+            dot-label:  @tr("Starting\u{2026}");
             in { animate dot-color { duration: 200ms; } }
         }
         probing     when root.state == MediaBackendState.probing     : {

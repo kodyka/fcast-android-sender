@@ -319,6 +319,10 @@ pub fn shutdown_graph_runtime() -> Result<()> {
     Ok(())
 }
 
+pub fn is_running() -> bool {
+    GRAPH_REFRESH_RUNNING.load(Ordering::SeqCst)
+}
+
 pub fn handle_command(command: Command) -> CommandResult {
     GRAPH_NODE_MANAGER.lock().dispatch(command)
 }
