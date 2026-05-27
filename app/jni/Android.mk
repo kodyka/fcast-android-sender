@@ -59,6 +59,7 @@ GSTREAMER_PLUGINS := \
     udp \
     dtls \
     srtp \
+    srt \
     webrtc \
     nice \
     rsrtp \
