@@ -1,5 +1,3 @@
-pub mod node_manager;
-pub mod runtime;
 pub mod service;
 
 pub use migration_runtime::{
@@ -20,3 +18,11 @@ pub mod media_bridge {
 }
 
 pub mod nodes;
+
+pub mod node_manager {
+    pub use migration_runtime::node_manager::*;
+}
+
+pub mod runtime {
+    pub use migration_runtime::runtime::*;
+}

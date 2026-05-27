@@ -1,14 +1,14 @@
-use crate::migration::{
+use crate::{
     media_bridge::StreamBridge,
     nodes::{DestinationNode, MixerNode, ScreenCaptureNode, SourceNode, VideoGeneratorNode},
     protocol::{Command, CommandResult, ControlPoint, Info, NodeInfo},
 };
 use chrono::{DateTime, Utc};
 use gst_app::{AppSink, AppSrc};
-use migration_runtime::FramePair;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
+use crate::FramePair;
 
 #[derive(Debug, Clone)]
 struct LinkRecord {
@@ -493,7 +493,7 @@ impl NodeManager {
     fn create_destination(
         &mut self,
         id: String,
-        family: crate::migration::protocol::DestinationFamily,
+        family: crate::protocol::DestinationFamily,
         audio: bool,
         video: bool,
     ) -> CommandResult {
@@ -783,13 +783,13 @@ impl NodeManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::migration::protocol::{Command, ControlMode, DestinationFamily, State};
+    use crate::protocol::{Command, ControlMode, DestinationFamily, State};
     use chrono::Duration;
     use serde_json::json;
 
     fn started_manager() -> NodeManager {
         let mut manager = NodeManager::default();
-        manager.start(migration_runtime::FramePair::new());
+        manager.start(crate::FramePair::new());
         manager
     }
 

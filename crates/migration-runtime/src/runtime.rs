@@ -1,9 +1,8 @@
-use crate::migration::{
+use crate::{
     node_manager::NodeManager,
     protocol::{Command, CommandResult, ControllerMessage, ServerMessage},
 };
 use anyhow::{anyhow, Context, Result};
-use migration_runtime::FramePair;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use std::{
@@ -17,6 +16,7 @@ use std::{
     time::Duration,
 };
 use tracing::{error, info, warn};
+use crate::FramePair;
 
 lazy_static::lazy_static! {
     static ref GRAPH_NODE_MANAGER: Mutex<NodeManager> = Mutex::new(NodeManager::default());
@@ -394,7 +394,7 @@ pub fn try_handle_command_json(payload: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::migration::protocol::{Command, CommandResult, DestinationFamily, ServerMessage};
+    use crate::protocol::{Command, CommandResult, DestinationFamily, ServerMessage};
     use serde_json::json;
     use std::io::Write;
     use std::net::Shutdown;
@@ -412,7 +412,7 @@ mod tests {
 
     fn runtime_handles() -> RuntimeHandles {
         RuntimeHandles {
-            frame_pair: migration_runtime::FramePair::new(),
+            frame_pair: crate::FramePair::new(),
         }
     }
 
