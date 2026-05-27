@@ -352,6 +352,12 @@ export global Bridge {
     in-out property <string> gstpop-service-state: "stopped"; // "stopped"|"starting"|"running"|"error"
     in-out property <bool>   gstpop-service-externally-owned: false;
 
+    // ── Migration runtime service control (mirrors gst-pop) ─────────────
+    callback start-migration-runtime-service();
+    callback stop-migration-runtime-service();
+    // Driven by Rust 1Hz poller while the Media Backend panel is visible.
+    in-out property <string> migration-runtime-service-state: "stopped"; // "stopped"|"starting"|"running"|"error"
+
     // ── Mixer screen (MVP-PHASE-11) ──────────────────────────────────────
     in-out property <SrtSource> srt-source-a: {
         slot-id:    "",

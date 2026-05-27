@@ -97,6 +97,35 @@ impl BackendLifecycle {
             });
         });
 
+        // ── Migration runtime service start / stop ──────────────────────────────
+        let start_mig_weak = ui.as_weak();
+        bridge.on_start_migration_runtime_service(move || {
+            let weak = start_mig_weak.clone();
+            tokio::spawn(async move {
+                let _ = weak.upgrade_in_event_loop(move |ui| {
+                    ui.global::<crate::Bridge>()
+                        .set_migration_runtime_service_state("starting".into());
+                });
+                if let Err(err) = crate::migration::service::request_service_start() {
+                    tracing::error!(?err, "request_service_start (migration runtime)");
+                    let _ = weak.upgrade_in_event_loop(move |ui| {
+                        ui.global::<crate::Bridge>()
+                            .set_migration_runtime_service_state("error".into());
+                    });
+                }
+            });
+        });
+
+        let stop_mig_weak = ui.as_weak();
+        bridge.on_stop_migration_runtime_service(move || {
+            crate::migration::service::request_service_stop();
+            let weak = stop_mig_weak.clone();
+            let _ = weak.upgrade_in_event_loop(move |ui| {
+                ui.global::<crate::Bridge>()
+                    .set_migration_runtime_service_state("stopping".into());
+            });
+        });
+
         // ── 1Hz daemon status poller ──────────────────────────────────────────
         let poll_weak = ui.as_weak();
         tokio::spawn(async move {
@@ -119,6 +148,35 @@ impl BackendLifecycle {
                     }
                     b.set_gstpop_service_state(state_str.into());
                     b.set_gstpop_service_externally_owned(externally);
+                });
+            }
+        });
+
+        // ── Migration runtime: 1Hz status poller ──────────────────────────────────
+        let poll_mig_weak = ui.as_weak();
+        tokio::spawn(async move {
+            let mut ticker =
+                tokio::time::interval(std::time::Duration::from_millis(1000));
+            loop {
+                ticker.tick().await;
+                let state_str: &'static str = match crate::migration::service::query_status() {
+                    Ok(json) => {
+                        if json.contains("\"running\"") {
+                            "running"
+                        } else if json.contains("\"error\"") {
+                            "error"
+                        } else {
+                            "stopped"
+                        }
+                    }
+                    Err(_) => "stopped",
+                };
+                let _ = poll_mig_weak.upgrade_in_event_loop(move |ui| {
+                    let b = ui.global::<crate::Bridge>();
+                    if b.get_active_panel() != crate::Panel::MediaBackend {
+                        return;
+                    }
+                    b.set_migration_runtime_service_state(state_str.into());
                 });
             }
         });
