@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use serde_json::{json, Value};
 
 use crate::backend::{BackendKind, BackendStatus, MediaBackend};
-use crate::migration::runtime;
+use crate::migration::runtime::{self, RuntimeHandles};
 
 #[derive(Debug, Default)]
 pub struct MigrationBackend;
@@ -23,9 +23,13 @@ impl MediaBackend for MigrationBackend {
         #[cfg(not(target_os = "android"))]
         {
             // Ensures the in-process runtime threads are running; idempotent.
-            tokio::task::spawn_blocking(runtime::start_graph_runtime)
-                .await
-                .context("migration probe: spawn_blocking join")??;
+            tokio::task::spawn_blocking(|| {
+                runtime::start_graph_runtime(RuntimeHandles {
+                    frame_pair: migration_runtime::FramePair::new(),
+                })
+            })
+            .await
+            .context("migration probe: spawn_blocking join")??;
         }
 
         #[cfg(target_os = "android")]

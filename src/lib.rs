@@ -14,7 +14,7 @@ use jni::{
 #[cfg(not(target_os = "android"))]
 use mcore::transmission::WhepSink;
 use mcore::{DeviceEvent, Event, ShouldQuit};
-use parking_lot::{Condvar, Mutex};
+use parking_lot::Mutex;
 #[cfg(target_os = "android")]
 use serde_json::{json, Value};
 #[cfg(target_os = "android")]
@@ -75,7 +75,7 @@ struct PlatformApp;
 lazy_static::lazy_static! {
     pub static ref GLOB_EVENT_CHAN: (crossbeam_channel::Sender<Event>, crossbeam_channel::Receiver<Event>)
         = crossbeam_channel::bounded(2);
-    pub static ref FRAME_PAIR: (Mutex<Option<gst_video::VideoFrame<gst_video::video_frame::Writable>>>, Condvar) = (Mutex::new(None), Condvar::new());
+    pub static ref FRAME_PAIR: Arc<migration_runtime::FramePair> = migration_runtime::FramePair::new();
     pub static ref FRAME_POOL: Mutex<gst_video::VideoBufferPool> = Mutex::new(gst_video::VideoBufferPool::new());
 }
 
@@ -179,10 +179,9 @@ fn ensure_gstreamer_initialized() -> std::result::Result<(), String> {
 fn set_capture_active(active: bool) {
     CAPTURE_ACTIVE.store(active, Ordering::SeqCst);
     if !active {
-        let (lock, cvar) = &*FRAME_PAIR;
-        let mut frame = lock.lock();
+        let mut frame = FRAME_PAIR.frame.lock();
         *frame = None;
-        cvar.notify_all();
+        FRAME_PAIR.cond.notify_all();
     }
 }
 
@@ -248,8 +247,10 @@ fn send_http_request(
 fn start_migrated_command_server(bind_addr: &str) -> std::result::Result<String, String> {
     ensure_gstreamer_initialized()?;
     std::env::set_var(MIGRATION_COMMAND_BIND_ENV, bind_addr);
-    crate::migration::runtime::start_graph_runtime()
-        .map_err(|err| format!("Failed to start migrated graph runtime: {err}"))?;
+    crate::migration::runtime::start_graph_runtime(crate::migration::runtime::RuntimeHandles {
+        frame_pair: FRAME_PAIR.clone(),
+    })
+    .map_err(|err| format!("Failed to start migrated graph runtime: {err}"))?;
     let health_body = send_http_request(bind_addr, "GET", "/health", None)?;
     Ok(format!(
         "migrated server active bind={bind_addr} health={}",
@@ -1080,7 +1081,11 @@ impl Application {
                 set_capture_active(true);
                 self.our_source_url = None;
 
-                if let Err(err) = crate::migration::runtime::start_graph_runtime() {
+                if let Err(err) = crate::migration::runtime::start_graph_runtime(
+                    crate::migration::runtime::RuntimeHandles {
+                        frame_pair: FRAME_PAIR.clone(),
+                    },
+                ) {
                     error!(?err, "Failed to start migrated graph runtime");
                     self.stop_cast(false).await?;
                     return Ok(ShouldQuit::No);
@@ -2598,7 +2603,11 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeGraphCommand<
     _class: jni::objects::JClass<'local>,
     command_json: jni::objects::JString<'local>,
 ) -> jni::sys::jstring {
-    if let Err(err) = crate::migration::runtime::start_graph_runtime() {
+    if let Err(err) =
+        crate::migration::runtime::start_graph_runtime(crate::migration::runtime::RuntimeHandles {
+            frame_pair: FRAME_PAIR.clone(),
+        })
+    {
         error!(?err, "Failed to start migrated graph runtime from JNI hook");
     }
 
@@ -2923,10 +2932,9 @@ fn process_frame<'local>(
     copy(&mut vframe, 1, slice_u)?;
     copy(&mut vframe, 2, slice_v)?;
 
-    let (lock, cvar) = &*FRAME_PAIR;
-    let mut frame = lock.lock();
+    let mut frame = FRAME_PAIR.frame.lock();
     *frame = Some(vframe);
-    cvar.notify_one();
+    FRAME_PAIR.cond.notify_one();
 
     Ok(())
 }
@@ -3060,7 +3068,11 @@ pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_na
 ) -> jni::sys::jstring {
     // Migration runtime currently has no start-time config; the JString is
     // accepted for API symmetry with GstPopServiceBridge and ignored.
-    let json = match crate::migration::runtime::start_graph_runtime() {
+    let json = match crate::migration::runtime::start_graph_runtime(
+        crate::migration::runtime::RuntimeHandles {
+            frame_pair: FRAME_PAIR.clone(),
+        },
+    ) {
         Ok(()) => migration_runtime_status_json("running", None),
         Err(err) => migration_runtime_status_json("error", Some(&err.to_string())),
     };
@@ -3111,8 +3123,6 @@ fn migration_runtime_status_json(state: &str, last_error: Option<&str>) -> Strin
         format!("{{\"state\":\"{}\"}}", state.replace('"', "'"))
     })
 }
-
-
 #[cfg(test)]
 mod phase9_dispatch_tests {
     use super::migration_test_log_name;
