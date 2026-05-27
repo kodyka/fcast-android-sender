@@ -1,11 +1,12 @@
 use crate::{
-    migration::protocol::{NodeInfo, SourceInfo, State},
-    FRAME_PAIR,
+    frame_pair::FramePair,
+    protocol::{NodeInfo, SourceInfo, State},
 };
 use chrono::{DateTime, Duration, Utc};
 use gst::prelude::*;
 use gst_app::{AppSink, AppSrc};
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 const PREROLL_LEAD_TIME_SECONDS: i64 = 10;
 
@@ -24,6 +25,7 @@ pub struct LiveScreenCapturePipeline {
 
 #[derive(Debug, Clone)]
 pub struct ScreenCaptureNode {
+    pub frame_pair: Arc<FramePair>,
     pub id: String,
     pub width: u32,
     pub height: u32,
@@ -42,8 +44,9 @@ impl ScreenCaptureNode {
         unsafe { gst::ffi::gst_is_initialized() != 0 }
     }
 
-    pub fn new(id: String, width: u32, height: u32, fps: u32) -> Self {
+    pub fn new(frame_pair: Arc<FramePair>, id: String, width: u32, height: u32, fps: u32) -> Self {
         Self {
+            frame_pair,
             id,
             width,
             height,
@@ -162,7 +165,7 @@ impl ScreenCaptureNode {
         ])
         .map_err(|err| format!("Failed to link screen capture pipeline elements: {err:?}"))?;
 
-        Self::wire_need_data(&appsrc);
+        Self::wire_need_data(&appsrc, self.frame_pair.clone());
 
         Ok(LiveScreenCapturePipeline {
             pipeline,
@@ -312,16 +315,17 @@ impl ScreenCaptureNode {
         changed || old_stage != self.stage
     }
 
-    fn wire_need_data(appsrc: &AppSrc) {
+    fn wire_need_data(appsrc: &AppSrc, frame_pair: Arc<FramePair>) {
         let mut caps = None::<gst::Caps>;
         appsrc.set_callbacks(
             gst_app::AppSrcCallbacks::builder()
                 .need_data(move |appsrc, _| {
                     let frame = {
-                        let (lock, cvar) = &*FRAME_PAIR;
-                        let mut frame = lock.lock();
+                        let mut frame = frame_pair.frame.lock();
                         while (*frame).is_none() {
-                            cvar.wait_for(&mut frame, std::time::Duration::from_millis(100));
+                            frame_pair
+                                .cond
+                                .wait_for(&mut frame, std::time::Duration::from_millis(100));
                         }
                         (*frame).take()
                     };

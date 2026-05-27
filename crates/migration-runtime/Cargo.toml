@@ -1,0 +1,21 @@
+[package]
+name = "migration-runtime"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "FCast media-graph migration runtime (extracted from android-sender)."
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+gst.workspace = true
+gst-app.workspace = true
+gst-video.workspace = true
+gst_rs_webrtc.workspace = true
+lazy_static.workspace = true
+mcore.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+uuid.workspace = true

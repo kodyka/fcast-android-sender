@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use serde_json::{json, Value};
 
 use crate::backend::{BackendKind, BackendStatus, MediaBackend};
-use crate::migration::runtime;
+use migration_runtime::runtime;
 
 #[derive(Debug, Default)]
 pub struct MigrationBackend;
@@ -20,10 +20,28 @@ impl MediaBackend for MigrationBackend {
     }
 
     async fn probe(&self) -> Result<BackendStatus> {
-        // Ensures the in-process runtime threads are running; idempotent.
-        tokio::task::spawn_blocking(runtime::start_graph_runtime)
+        #[cfg(not(target_os = "android"))]
+        {
+            // Ensures the in-process runtime threads are running; idempotent.
+            tokio::task::spawn_blocking(|| {
+                runtime::start_graph_runtime(migration_runtime::runtime::RuntimeHandles {
+                    frame_pair: migration_runtime::FramePair::new(),
+                })
+            })
             .await
             .context("migration probe: spawn_blocking join")??;
+        }
+
+        #[cfg(target_os = "android")]
+        {
+            if !runtime::is_running() {
+                return Ok(BackendStatus {
+                    status_text: "Migration runtime stopped".to_string(),
+                    error_text: String::new(),
+                    is_connected: false,
+                });
+            }
+        }
 
         let response = self
             .dispatch("getinfo", json!({}))
@@ -39,6 +57,7 @@ impl MediaBackend for MigrationBackend {
         Ok(BackendStatus {
             status_text: format!("Migration runtime ready - nodes={node_count}"),
             error_text: String::new(),
+            is_connected: true,
         })
     }
 

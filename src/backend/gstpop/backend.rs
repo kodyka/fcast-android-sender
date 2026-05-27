@@ -81,6 +81,7 @@ impl MediaBackend for GstPopBackend {
         Ok(BackendStatus {
             status_text: format!("gst-pop {version} - {count} pipeline(s)"),
             error_text: String::new(),
+            is_connected: true,
         })
     }
 

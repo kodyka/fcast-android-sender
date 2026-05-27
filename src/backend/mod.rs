@@ -12,10 +12,19 @@ use parking_lot::RwLock;
 use serde_json::Value;
 use std::sync::Arc;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct BackendStatus {
     pub status_text: String,
     pub error_text: String,
+    /// True when the backend is reachable and operational (show Ready).
+    /// False when it is present but not yet running (show Disconnected).
+    pub is_connected: bool,
+}
+
+impl Default for BackendStatus {
+    fn default() -> Self {
+        Self { status_text: String::new(), error_text: String::new(), is_connected: true }
+    }
 }
 
 #[async_trait::async_trait]

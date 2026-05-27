@@ -1,4 +1,4 @@
-use crate::migration::protocol::{DestinationFamily, DestinationInfo, NodeInfo, State};
+use crate::protocol::{DestinationFamily, DestinationInfo, NodeInfo, State};
 use chrono::{DateTime, Duration, Utc};
 use gst::prelude::*;
 use gst_app::AppSrc;

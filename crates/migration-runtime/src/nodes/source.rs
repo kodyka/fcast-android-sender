@@ -1,4 +1,4 @@
-use crate::migration::protocol::{NodeInfo, SourceInfo, State};
+use crate::protocol::{NodeInfo, SourceInfo, State};
 use chrono::{DateTime, Duration, Utc};
 use gst::prelude::*;
 use gst_app::AppSink;

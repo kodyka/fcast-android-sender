@@ -348,8 +348,12 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
 
         displayManager = (DisplayManager)getSystemService(Context.DISPLAY_SERVICE);
         displayManager.registerDisplayListener(this, new Handler(getMainLooper()));
-        logGraphInfo("onCreate");
-        runGraphSmokeSequence();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 101);
+            }
+        }
     }
 
     private static final String vertexShader = """

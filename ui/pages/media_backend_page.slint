@@ -185,6 +185,63 @@ export component MediaBackendPage inherits Rectangle {
                         }
                     }
                 }
+
+                SettingsSection {
+                    title: @tr("SERVICE");
+                    visible: Bridge.media-backend == MediaBackendKind.migration;
+
+                    Rectangle {
+                        background: Theme.surface-card;
+                        border-radius: Theme.radius-card;
+                        min-height: 96px;
+                        VerticalLayout {
+                            padding: Theme.padding-screen;
+                            spacing: 12px;
+
+                            HorizontalLayout {
+                                spacing: 8px;
+                                Rectangle {
+                                    width: 12px;
+                                    height: 12px;
+                                    border-radius: 6px;
+                                    background:
+                                        Bridge.migration-runtime-service-state == "running"  ? Theme.success :
+                                        Bridge.migration-runtime-service-state == "starting" ? Theme.warning :
+                                        Bridge.migration-runtime-service-state == "error"    ? Theme.error-fg :
+                                        Theme.text-disabled;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                                Text {
+                                    text:
+                                        Bridge.migration-runtime-service-state == "running"  ? @tr("Migration runtime running") :
+                                        Bridge.migration-runtime-service-state == "starting" ? @tr("Migration runtime starting\u{2026}") :
+                                        Bridge.migration-runtime-service-state == "error"    ? @tr("Migration runtime failed") :
+                                                                                                @tr("Migration runtime stopped");
+                                    color: Theme.text-primary;
+                                    font-size: Theme.font-size-body;
+                                    horizontal-stretch: 1;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: 12px;
+                                PrimaryButton {
+                                    label: @tr("Start service");
+                                    enabled: Bridge.migration-runtime-service-state == "stopped"
+                                          || Bridge.migration-runtime-service-state == "error";
+                                    clicked => { Bridge.start-migration-runtime-service(); }
+                                }
+                                DestructiveButton {
+                                    label: @tr("Stop service");
+                                    enabled: Bridge.migration-runtime-service-state == "running"
+                                          || Bridge.migration-runtime-service-state == "starting";
+                                    clicked => { Bridge.stop-migration-runtime-service(); }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

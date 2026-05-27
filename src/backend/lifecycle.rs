@@ -97,6 +97,35 @@ impl BackendLifecycle {
             });
         });
 
+        // ── Migration runtime service start / stop ──────────────────────────────
+        let start_mig_weak = ui.as_weak();
+        bridge.on_start_migration_runtime_service(move || {
+            let weak = start_mig_weak.clone();
+            tokio::spawn(async move {
+                let _ = weak.upgrade_in_event_loop(move |ui| {
+                    ui.global::<crate::Bridge>()
+                        .set_migration_runtime_service_state("starting".into());
+                });
+                if let Err(err) = crate::migration_service::request_service_start() {
+                    tracing::error!(?err, "request_service_start (migration runtime)");
+                    let _ = weak.upgrade_in_event_loop(move |ui| {
+                        ui.global::<crate::Bridge>()
+                            .set_migration_runtime_service_state("error".into());
+                    });
+                }
+            });
+        });
+
+        let stop_mig_weak = ui.as_weak();
+        bridge.on_stop_migration_runtime_service(move || {
+            crate::migration_service::request_service_stop();
+            let weak = stop_mig_weak.clone();
+            let _ = weak.upgrade_in_event_loop(move |ui| {
+                ui.global::<crate::Bridge>()
+                    .set_migration_runtime_service_state("stopping".into());
+            });
+        });
+
         // ── 1Hz daemon status poller ──────────────────────────────────────────
         let poll_weak = ui.as_weak();
         tokio::spawn(async move {
@@ -114,11 +143,52 @@ impl BackendLifecycle {
                 let externally = status.externally_owned;
                 let _ = poll_weak.upgrade_in_event_loop(move |ui| {
                     let b = ui.global::<crate::Bridge>();
-                    if b.get_active_panel() != crate::Panel::MediaBackend {
+                    if ui.global::<crate::PanelBridge>().get_active() != crate::Panel::MediaBackend {
                         return;
                     }
                     b.set_gstpop_service_state(state_str.into());
                     b.set_gstpop_service_externally_owned(externally);
+                });
+            }
+        });
+
+        // ── Migration runtime: 1Hz status poller ──────────────────────────────────
+        let poll_mig_weak = ui.as_weak();
+        tokio::spawn(async move {
+            let mut ticker =
+                tokio::time::interval(std::time::Duration::from_millis(1000));
+            loop {
+                ticker.tick().await;
+                let state_str: &'static str = match crate::migration_service::query_status() {
+                    Ok(json) => {
+                        if json.contains("\"running\"") {
+                            "running"
+                        } else if json.contains("\"error\"") {
+                            "error"
+                        } else {
+                            "stopped"
+                        }
+                    }
+                    Err(_) => "stopped",
+                };
+                let _ = poll_mig_weak.upgrade_in_event_loop(move |ui| {
+                    let b = ui.global::<crate::Bridge>();
+                    if ui.global::<crate::PanelBridge>().get_active() != crate::Panel::MediaBackend {
+                        return;
+                    }
+                    b.set_migration_runtime_service_state(state_str.into());
+                    // Keep the top-level status pill in sync when migration is the
+                    // active backend — poller is the single source of truth.
+                    if b.get_media_backend() == crate::MediaBackendKind::Migration {
+                        let (mbs, text): (crate::MediaBackendState, &str) = match state_str {
+                            "running"  => (crate::MediaBackendState::Ready,        "Migration runtime running"),
+                            "starting" => (crate::MediaBackendState::Starting,     ""),
+                            "error"    => (crate::MediaBackendState::Error,        ""),
+                            _          => (crate::MediaBackendState::Disconnected, "Migration runtime stopped"),
+                        };
+                        b.set_media_backend_state(mbs);
+                        b.set_media_backend_status_text(text.into());
+                    }
                 });
             }
         });
@@ -261,7 +331,12 @@ fn push_saved(weak: &Weak<MainWindow>) {
 fn push_status(weak: &Weak<MainWindow>, status: BackendStatus) {
     let _ = weak.upgrade_in_event_loop(move |ui| {
         let bridge = ui.global::<crate::Bridge>();
-        bridge.set_media_backend_state(crate::MediaBackendState::Ready);
+        let state = if status.is_connected {
+            crate::MediaBackendState::Ready
+        } else {
+            crate::MediaBackendState::Disconnected
+        };
+        bridge.set_media_backend_state(state);
         bridge.set_media_backend_status_text(status.status_text.into());
         bridge.set_media_backend_error_text(status.error_text.into());
     });

@@ -1,4 +1,4 @@
-use crate::migration::{
+use crate::{
     media_bridge::StreamBridge,
     nodes::{DestinationNode, MixerNode, ScreenCaptureNode, SourceNode, VideoGeneratorNode},
     protocol::{Command, CommandResult, ControlPoint, Info, NodeInfo},
@@ -7,6 +7,8 @@ use chrono::{DateTime, Utc};
 use gst_app::{AppSink, AppSrc};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::Arc;
+use crate::FramePair;
 
 #[derive(Debug, Clone)]
 struct LinkRecord {
@@ -180,6 +182,7 @@ impl NodeRecord {
 #[derive(Debug, Default)]
 pub struct NodeManager {
     started: bool,
+    frame_pair: Option<Arc<FramePair>>,
     nodes: HashMap<String, NodeRecord>,
     links: HashMap<String, LinkRecord>,
     media_bridges: HashMap<String, StreamBridge>,
@@ -298,8 +301,9 @@ impl NodeManager {
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&mut self, frame_pair: Arc<FramePair>) {
         self.started = true;
+        self.frame_pair = Some(frame_pair);
         self.refresh_nodes();
         self.sync_media_links();
     }
@@ -314,6 +318,7 @@ impl NodeManager {
 
     pub fn shutdown(&mut self) {
         self.started = false;
+        self.frame_pair = None;
         for node in self.nodes.values_mut() {
             node.stop();
         }
@@ -472,10 +477,15 @@ impl NodeManager {
                 "ScreenCaptureSource {id} requires non-zero width/height/fps"
             ));
         }
+        let Some(frame_pair) = self.frame_pair.clone() else {
+            return CommandResult::Error(
+                "ScreenCaptureSource requires runtime handles to be installed".to_string(),
+            );
+        };
 
         self.nodes.insert(
             id.clone(),
-            NodeRecord::ScreenCapture(ScreenCaptureNode::new(id, width, height, fps)),
+            NodeRecord::ScreenCapture(ScreenCaptureNode::new(frame_pair, id, width, height, fps)),
         );
         CommandResult::Success
     }
@@ -483,7 +493,7 @@ impl NodeManager {
     fn create_destination(
         &mut self,
         id: String,
-        family: crate::migration::protocol::DestinationFamily,
+        family: crate::protocol::DestinationFamily,
         audio: bool,
         video: bool,
     ) -> CommandResult {
@@ -773,13 +783,13 @@ impl NodeManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::migration::protocol::{Command, ControlMode, DestinationFamily, State};
+    use crate::protocol::{Command, ControlMode, DestinationFamily, State};
     use chrono::Duration;
     use serde_json::json;
 
     fn started_manager() -> NodeManager {
         let mut manager = NodeManager::default();
-        manager.start();
+        manager.start(crate::FramePair::new());
         manager
     }
 

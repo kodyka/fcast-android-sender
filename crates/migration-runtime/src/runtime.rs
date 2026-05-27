@@ -1,4 +1,4 @@
-use crate::migration::{
+use crate::{
     node_manager::NodeManager,
     protocol::{Command, CommandResult, ControllerMessage, ServerMessage},
 };
@@ -10,15 +10,17 @@ use std::{
     net::{TcpListener, TcpStream},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Mutex as StdMutex,
+        Arc, Mutex as StdMutex,
     },
     thread::JoinHandle,
     time::Duration,
 };
 use tracing::{error, info, warn};
+use crate::FramePair;
 
 lazy_static::lazy_static! {
     static ref GRAPH_NODE_MANAGER: Mutex<NodeManager> = Mutex::new(NodeManager::default());
+    static ref GRAPH_RUNTIME_HANDLES: StdMutex<Option<RuntimeHandles>> = StdMutex::new(None);
     static ref GRAPH_REFRESH_THREAD: StdMutex<Option<JoinHandle<()>>> = StdMutex::new(None);
     static ref GRAPH_REFRESH_RUNNING: AtomicBool = AtomicBool::new(false);
     static ref GRAPH_COMMAND_SERVER_THREAD: StdMutex<Option<JoinHandle<()>>> = StdMutex::new(None);
@@ -35,6 +37,11 @@ const GRAPH_COMMAND_BIND_ENV: &str = "MIGRATION_COMMAND_BIND";
 enum InboundCommand {
     Controller(ControllerMessage),
     Command(Command),
+}
+
+#[derive(Clone)]
+pub struct RuntimeHandles {
+    pub frame_pair: Arc<FramePair>,
 }
 
 fn ensure_refresh_thread_running() -> Result<()> {
@@ -299,10 +306,22 @@ fn stop_command_server_thread() {
     }
 }
 
-pub fn start_graph_runtime() -> Result<()> {
+pub fn start_graph_runtime(handles: RuntimeHandles) -> Result<()> {
+    let frame_pair = {
+        let mut handle_slot = GRAPH_RUNTIME_HANDLES
+            .lock()
+            .map_err(|_| anyhow!("Graph runtime handles mutex is poisoned"))?;
+        if handle_slot.is_none() {
+            *handle_slot = Some(handles);
+        }
+        handle_slot
+            .as_ref()
+            .map(|installed| installed.frame_pair.clone())
+            .ok_or_else(|| anyhow!("Graph runtime handles are unavailable"))?
+    };
     {
         let mut manager = GRAPH_NODE_MANAGER.lock();
-        manager.start();
+        manager.start(frame_pair);
     }
     ensure_refresh_thread_running()?;
     ensure_command_server_running()?;
@@ -316,7 +335,14 @@ pub fn shutdown_graph_runtime() -> Result<()> {
         let mut manager = GRAPH_NODE_MANAGER.lock();
         manager.shutdown();
     }
+    if let Ok(mut handle_slot) = GRAPH_RUNTIME_HANDLES.lock() {
+        *handle_slot = None;
+    }
     Ok(())
+}
+
+pub fn is_running() -> bool {
+    GRAPH_REFRESH_RUNNING.load(Ordering::SeqCst)
 }
 
 pub fn handle_command(command: Command) -> CommandResult {
@@ -368,7 +394,7 @@ pub fn try_handle_command_json(payload: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::migration::protocol::{Command, CommandResult, DestinationFamily, ServerMessage};
+    use crate::protocol::{Command, CommandResult, DestinationFamily, ServerMessage};
     use serde_json::json;
     use std::io::Write;
     use std::net::Shutdown;
@@ -382,6 +408,12 @@ mod tests {
 
     fn test_guard() -> std::sync::MutexGuard<'static, ()> {
         test_lock().lock().unwrap_or_else(|err| err.into_inner())
+    }
+
+    fn runtime_handles() -> RuntimeHandles {
+        RuntimeHandles {
+            frame_pair: crate::FramePair::new(),
+        }
     }
 
     fn parse_request_from_wire(payload: &[u8]) -> Result<(String, String, Vec<u8>), String> {
@@ -406,7 +438,7 @@ mod tests {
         let _guard = test_guard();
         let _ = shutdown_graph_runtime();
         std::env::remove_var(GRAPH_COMMAND_BIND_ENV);
-        start_graph_runtime().unwrap();
+        start_graph_runtime(runtime_handles()).unwrap();
 
         let payload = serde_json::to_string(&Command::CreateSource {
             id: "test-source".to_string(),
@@ -449,7 +481,7 @@ mod tests {
         let _guard = test_guard();
         let _ = shutdown_graph_runtime();
         std::env::remove_var(GRAPH_COMMAND_BIND_ENV);
-        start_graph_runtime().unwrap();
+        start_graph_runtime(runtime_handles()).unwrap();
 
         let request_id = Uuid::new_v4();
         let payload = json!({
@@ -524,13 +556,13 @@ mod tests {
         let _ = shutdown_graph_runtime();
         std::env::remove_var(GRAPH_COMMAND_BIND_ENV);
 
-        let first = start_graph_runtime();
+        let first = start_graph_runtime(runtime_handles());
         assert!(
             first.is_ok(),
             "first start_graph_runtime() failed: {first:?}"
         );
 
-        let second = start_graph_runtime();
+        let second = start_graph_runtime(runtime_handles());
         assert!(
             second.is_ok(),
             "second start_graph_runtime() failed: {second:?}"
@@ -558,9 +590,9 @@ mod tests {
         let _ = shutdown_graph_runtime();
         std::env::remove_var(GRAPH_COMMAND_BIND_ENV);
 
-        start_graph_runtime().expect("start 1 failed");
+        start_graph_runtime(runtime_handles()).expect("start 1 failed");
         shutdown_graph_runtime().expect("shutdown failed");
-        start_graph_runtime().expect("start 2 failed");
+        start_graph_runtime(runtime_handles()).expect("start 2 failed");
 
         shutdown_graph_runtime().unwrap();
     }
@@ -622,7 +654,7 @@ mod tests {
         let _guard = test_guard();
         let _ = shutdown_graph_runtime();
         std::env::remove_var(GRAPH_COMMAND_BIND_ENV);
-        start_graph_runtime().unwrap();
+        start_graph_runtime(runtime_handles()).unwrap();
 
         let commands = [
             r#"{"createmixer":{"id":"channel-1"}}"#,

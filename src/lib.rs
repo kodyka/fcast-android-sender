@@ -14,7 +14,7 @@ use jni::{
 #[cfg(not(target_os = "android"))]
 use mcore::transmission::WhepSink;
 use mcore::{DeviceEvent, Event, ShouldQuit};
-use parking_lot::{Condvar, Mutex};
+use parking_lot::Mutex;
 #[cfg(target_os = "android")]
 use serde_json::{json, Value};
 #[cfg(target_os = "android")]
@@ -34,8 +34,7 @@ use tracing::{info, warn};
 pub mod log_ring;
 
 mod backend;
-pub mod migration;
-mod whep_signaller_compat;
+mod migration_service;
 
 #[derive(Default)]
 struct RecordingTickerState {
@@ -75,7 +74,7 @@ struct PlatformApp;
 lazy_static::lazy_static! {
     pub static ref GLOB_EVENT_CHAN: (crossbeam_channel::Sender<Event>, crossbeam_channel::Receiver<Event>)
         = crossbeam_channel::bounded(2);
-    pub static ref FRAME_PAIR: (Mutex<Option<gst_video::VideoFrame<gst_video::video_frame::Writable>>>, Condvar) = (Mutex::new(None), Condvar::new());
+    pub static ref FRAME_PAIR: Arc<migration_runtime::FramePair> = migration_runtime::FramePair::new();
     pub static ref FRAME_POOL: Mutex<gst_video::VideoBufferPool> = Mutex::new(gst_video::VideoBufferPool::new());
 }
 
@@ -179,10 +178,9 @@ fn ensure_gstreamer_initialized() -> std::result::Result<(), String> {
 fn set_capture_active(active: bool) {
     CAPTURE_ACTIVE.store(active, Ordering::SeqCst);
     if !active {
-        let (lock, cvar) = &*FRAME_PAIR;
-        let mut frame = lock.lock();
+        let mut frame = FRAME_PAIR.frame.lock();
         *frame = None;
-        cvar.notify_all();
+        FRAME_PAIR.cond.notify_all();
     }
 }
 
@@ -248,8 +246,10 @@ fn send_http_request(
 fn start_migrated_command_server(bind_addr: &str) -> std::result::Result<String, String> {
     ensure_gstreamer_initialized()?;
     std::env::set_var(MIGRATION_COMMAND_BIND_ENV, bind_addr);
-    crate::migration::runtime::start_graph_runtime()
-        .map_err(|err| format!("Failed to start migrated graph runtime: {err}"))?;
+    migration_runtime::runtime::start_graph_runtime(migration_runtime::runtime::RuntimeHandles {
+        frame_pair: FRAME_PAIR.clone(),
+    })
+    .map_err(|err| format!("Failed to start migrated graph runtime: {err}"))?;
     let health_body = send_http_request(bind_addr, "GET", "/health", None)?;
     Ok(format!(
         "migrated server active bind={bind_addr} health={}",
@@ -277,7 +277,7 @@ fn run_graph_http_command(bind_addr: &str, payload: Value) -> std::result::Resul
 #[cfg(target_os = "android")]
 fn run_graph_command(action: &str, params: Value) -> std::result::Result<Value, String> {
     let payload = json!({ action: params });
-    let response_json = crate::migration::runtime::try_handle_command_json(&payload.to_string());
+    let response_json = migration_runtime::runtime::try_handle_command_json(&payload.to_string());
     let root: Value = serde_json::from_str(&response_json)
         .map_err(|err| format!("{action} parse failure: {err}; raw={response_json}"))?;
     let result = root
@@ -886,12 +886,12 @@ impl Application {
         #[cfg(target_os = "android")]
         {
             let _ =
-                crate::migration::runtime::handle_command(crate::migration::Command::Disconnect {
+                migration_runtime::runtime::handle_command(migration_runtime::Command::Disconnect {
                     link_id: CAST_LINK_ID.into(),
                 });
             for id in [CAST_SOURCE_ID, CAST_DESTINATION_ID] {
                 let _ =
-                    crate::migration::runtime::handle_command(crate::migration::Command::Remove {
+                    migration_runtime::runtime::handle_command(migration_runtime::Command::Remove {
                         id: id.into(),
                     });
             }
@@ -931,6 +931,7 @@ impl Application {
     async fn handle_event(&mut self, event: Event) -> Result<ShouldQuit> {
         debug!("Handling event: {event:?}");
 
+        #[allow(unreachable_patterns)]
         match event {
             Event::EndSession { .. } => {
                 self.ui_weak.upgrade_in_event_loop(|ui| {
@@ -1079,7 +1080,11 @@ impl Application {
                 set_capture_active(true);
                 self.our_source_url = None;
 
-                if let Err(err) = crate::migration::runtime::start_graph_runtime() {
+                if let Err(err) = migration_runtime::runtime::start_graph_runtime(
+                    migration_runtime::runtime::RuntimeHandles {
+                        frame_pair: FRAME_PAIR.clone(),
+                    },
+                ) {
                     error!(?err, "Failed to start migrated graph runtime");
                     self.stop_cast(false).await?;
                     return Ok(ShouldQuit::No);
@@ -1090,19 +1095,19 @@ impl Application {
                 let fps = self.last_cast_request_max_framerate.unwrap_or(30);
 
                 let commands = [
-                    crate::migration::Command::CreateScreenCaptureSource {
+                    migration_runtime::Command::CreateScreenCaptureSource {
                         id: CAST_SOURCE_ID.into(),
                         width: scale_width,
                         height: scale_height,
                         fps,
                     },
-                    crate::migration::Command::CreateDestination {
+                    migration_runtime::Command::CreateDestination {
                         id: CAST_DESTINATION_ID.into(),
-                        family: crate::migration::DestinationFamily::Whep { server_port: 0 },
+                        family: migration_runtime::DestinationFamily::Whep { server_port: 0 },
                         audio: false,
                         video: true,
                     },
-                    crate::migration::Command::Connect {
+                    migration_runtime::Command::Connect {
                         link_id: CAST_LINK_ID.into(),
                         src_id: CAST_SOURCE_ID.into(),
                         sink_id: CAST_DESTINATION_ID.into(),
@@ -1110,12 +1115,12 @@ impl Application {
                         video: true,
                         config: None,
                     },
-                    crate::migration::Command::Start {
+                    migration_runtime::Command::Start {
                         id: CAST_DESTINATION_ID.into(),
                         cue_time: None,
                         end_time: None,
                     },
-                    crate::migration::Command::Start {
+                    migration_runtime::Command::Start {
                         id: CAST_SOURCE_ID.into(),
                         cue_time: None,
                         end_time: None,
@@ -1123,8 +1128,8 @@ impl Application {
                 ];
 
                 for command in commands {
-                    if let crate::migration::CommandResult::Error(err) =
-                        crate::migration::runtime::handle_command(command)
+                    if let migration_runtime::CommandResult::Error(err) =
+                        migration_runtime::runtime::handle_command(command)
                     {
                         error!(?err, "Failed to build unified cast graph");
                         self.stop_cast(false).await?;
@@ -1136,14 +1141,14 @@ impl Application {
                 tokio::spawn(async move {
                     for _ in 0..200 {
                         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                        let info = crate::migration::runtime::handle_command(
-                            crate::migration::Command::GetInfo {
+                        let info = migration_runtime::runtime::handle_command(
+                            migration_runtime::Command::GetInfo {
                                 id: Some(CAST_DESTINATION_ID.into()),
                             },
                         );
 
-                        if let crate::migration::CommandResult::Info(snapshot) = info {
-                            if let Some(crate::migration::NodeInfo::Destination(destination)) =
+                        if let migration_runtime::CommandResult::Info(snapshot) = info {
+                            if let Some(migration_runtime::NodeInfo::Destination(destination)) =
                                 snapshot.nodes.get(CAST_DESTINATION_ID)
                             {
                                 if let (Some(bound_port_v4), Some(bound_port_v6)) =
@@ -1274,7 +1279,7 @@ impl Application {
         }
 
         debug!("Quitting event loop");
-        if let Err(err) = crate::migration::runtime::shutdown_graph_runtime() {
+        if let Err(err) = migration_runtime::runtime::shutdown_graph_runtime() {
             error!(?err, "Failed to shut down migrated graph runtime");
         }
 
@@ -2508,7 +2513,7 @@ fn android_main(app: PlatformApp) {
         ui.global::<Bridge>().on_stop_migration_server({
             let ui_weak = ui.as_weak();
             move || {
-                let status = match crate::migration::runtime::shutdown_graph_runtime() {
+                let status = match migration_runtime::runtime::shutdown_graph_runtime() {
                     Ok(()) => "PASS migration server stopped".to_string(),
                     Err(err) => format!("FAIL migration server stop: {err}"),
                 };
@@ -2528,7 +2533,7 @@ fn android_main(app: PlatformApp) {
                 ui.global::<Bridge>().set_test_state(MixerState::Starting);
             });
             // TODO: build and start GStreamer test pipeline.
-            // Pattern: see src/migration/nodes/mixer.rs for compositor pad setup.
+            // Pattern: see crates/migration-runtime/src/nodes/mixer.rs for compositor pad setup.
             // On success call set_test_state(MixerState::Running).
             // On error call set_test_state(MixerState::Error) + set_test_error_text.
             log::info!("start-test: stub — pipeline not yet implemented");
@@ -2597,15 +2602,19 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeGraphCommand<
     _class: jni::objects::JClass<'local>,
     command_json: jni::objects::JString<'local>,
 ) -> jni::sys::jstring {
-    if let Err(err) = crate::migration::runtime::start_graph_runtime() {
+    if let Err(err) =
+        migration_runtime::runtime::start_graph_runtime(migration_runtime::runtime::RuntimeHandles {
+            frame_pair: FRAME_PAIR.clone(),
+        })
+    {
         error!(?err, "Failed to start migrated graph runtime from JNI hook");
     }
 
     let response = match jstring_to_string(&mut env, &command_json) {
-        Ok(json) => crate::migration::runtime::try_handle_command_json(&json),
+        Ok(json) => migration_runtime::runtime::try_handle_command_json(&json),
         Err(err) => {
             error!(?err, "Failed to decode graph command payload from Java");
-            crate::migration::runtime::try_handle_command_json("")
+            migration_runtime::runtime::try_handle_command_json("")
         }
     };
 
@@ -2922,10 +2931,9 @@ fn process_frame<'local>(
     copy(&mut vframe, 1, slice_u)?;
     copy(&mut vframe, 2, slice_v)?;
 
-    let (lock, cvar) = &*FRAME_PAIR;
-    let mut frame = lock.lock();
+    let mut frame = FRAME_PAIR.frame.lock();
     *frame = Some(vframe);
-    cvar.notify_one();
+    FRAME_PAIR.cond.notify_one();
 
     Ok(())
 }
@@ -3043,6 +3051,77 @@ fn parse_gstpop_config_port(json: &str) -> Option<u16> {
     Some(crate::backend::gstpop::embedded::url_port(url))
 }
 
+// ── migration runtime service host JNI bridge ────────────────────────────────
+// Symbols match MigrationRuntimeServiceBridge in the
+// `org.fcast.android.sender` package.
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_nativeStartMigrationRuntimeHost<
+    'local,
+>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+    _config_json: jni::objects::JString<'local>,
+) -> jni::sys::jstring {
+    // Migration runtime currently has no start-time config; the JString is
+    // accepted for API symmetry with GstPopServiceBridge and ignored.
+    let json = match migration_runtime::runtime::start_graph_runtime(
+        migration_runtime::runtime::RuntimeHandles {
+            frame_pair: FRAME_PAIR.clone(),
+        },
+    ) {
+        Ok(()) => migration_runtime_status_json("running", None),
+        Err(err) => migration_runtime_status_json("error", Some(&err.to_string())),
+    };
+    env.new_string(json).expect("new_string").into_raw()
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_nativeStopMigrationRuntimeHost<
+    'local,
+>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+) -> jni::sys::jstring {
+    let json = match migration_runtime::runtime::shutdown_graph_runtime() {
+        Ok(()) => migration_runtime_status_json("stopped", None),
+        Err(err) => migration_runtime_status_json("error", Some(&err.to_string())),
+    };
+    env.new_string(json).expect("new_string").into_raw()
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_nativeGetMigrationRuntimeStatus<
+    'local,
+>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+) -> jni::sys::jstring {
+    let state = if migration_runtime::runtime::is_running() {
+        "running"
+    } else {
+        "stopped"
+    };
+    let json = migration_runtime_status_json(state, None);
+    env.new_string(json).expect("new_string").into_raw()
+}
+
+#[cfg(target_os = "android")]
+fn migration_runtime_status_json(state: &str, last_error: Option<&str>) -> String {
+    let mut value = serde_json::json!({ "state": state });
+    if let Some(err) = last_error {
+        value["last_error"] = serde_json::Value::String(err.to_string());
+    }
+    serde_json::to_string(&value).unwrap_or_else(|_| {
+        format!("{{\"state\":\"{}\"}}", state.replace('"', "'"))
+    })
+}
 #[cfg(test)]
 mod phase9_dispatch_tests {
     use super::migration_test_log_name;

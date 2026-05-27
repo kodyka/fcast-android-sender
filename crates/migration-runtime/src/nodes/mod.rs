@@ -1,4 +1,4 @@
-pub(crate) mod control;
+pub mod control;
 pub mod destination;
 pub mod mixer;
 pub mod screen_capture;
@@ -7,6 +7,6 @@ pub mod video_generator;
 
 pub use destination::DestinationNode;
 pub use mixer::MixerNode;
-pub use screen_capture::*;
+pub use screen_capture::ScreenCaptureNode;
 pub use source::SourceNode;
 pub use video_generator::VideoGeneratorNode;
