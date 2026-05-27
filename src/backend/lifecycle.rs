@@ -143,7 +143,7 @@ impl BackendLifecycle {
                 let externally = status.externally_owned;
                 let _ = poll_weak.upgrade_in_event_loop(move |ui| {
                     let b = ui.global::<crate::Bridge>();
-                    if b.get_active_panel() != crate::Panel::MediaBackend {
+                    if ui.global::<crate::PanelBridge>().get_active() != crate::Panel::MediaBackend {
                         return;
                     }
                     b.set_gstpop_service_state(state_str.into());
@@ -173,7 +173,7 @@ impl BackendLifecycle {
                 };
                 let _ = poll_mig_weak.upgrade_in_event_loop(move |ui| {
                     let b = ui.global::<crate::Bridge>();
-                    if b.get_active_panel() != crate::Panel::MediaBackend {
+                    if ui.global::<crate::PanelBridge>().get_active() != crate::Panel::MediaBackend {
                         return;
                     }
                     b.set_migration_runtime_service_state(state_str.into());
