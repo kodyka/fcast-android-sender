@@ -106,7 +106,7 @@ impl BackendLifecycle {
                     ui.global::<crate::Bridge>()
                         .set_migration_runtime_service_state("starting".into());
                 });
-                if let Err(err) = crate::migration::service::request_service_start() {
+                if let Err(err) = crate::migration_service::request_service_start() {
                     tracing::error!(?err, "request_service_start (migration runtime)");
                     let _ = weak.upgrade_in_event_loop(move |ui| {
                         ui.global::<crate::Bridge>()
@@ -118,7 +118,7 @@ impl BackendLifecycle {
 
         let stop_mig_weak = ui.as_weak();
         bridge.on_stop_migration_runtime_service(move || {
-            crate::migration::service::request_service_stop();
+            crate::migration_service::request_service_stop();
             let weak = stop_mig_weak.clone();
             let _ = weak.upgrade_in_event_loop(move |ui| {
                 ui.global::<crate::Bridge>()
@@ -159,7 +159,7 @@ impl BackendLifecycle {
                 tokio::time::interval(std::time::Duration::from_millis(1000));
             loop {
                 ticker.tick().await;
-                let state_str: &'static str = match crate::migration::service::query_status() {
+                let state_str: &'static str = match crate::migration_service::query_status() {
                     Ok(json) => {
                         if json.contains("\"running\"") {
                             "running"

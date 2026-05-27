@@ -1,4 +1,4 @@
-// src/migration/service.rs
+// src/migration_service.rs
 //
 // Rust → Java reflection helper for the MigrationRuntimeService Android
 // foreground service. Mirrors src/backend/gstpop/service.rs.

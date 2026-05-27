@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use serde_json::{json, Value};
 
 use crate::backend::{BackendKind, BackendStatus, MediaBackend};
-use crate::migration::runtime::{self, RuntimeHandles};
+use migration_runtime::runtime;
 
 #[derive(Debug, Default)]
 pub struct MigrationBackend;
@@ -24,7 +24,7 @@ impl MediaBackend for MigrationBackend {
         {
             // Ensures the in-process runtime threads are running; idempotent.
             tokio::task::spawn_blocking(|| {
-                runtime::start_graph_runtime(RuntimeHandles {
+                runtime::start_graph_runtime(migration_runtime::runtime::RuntimeHandles {
                     frame_pair: migration_runtime::FramePair::new(),
                 })
             })
