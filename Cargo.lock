@@ -4149,10 +4149,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "gst-plugin-webrtc",
  "gstreamer 0.25.2",
  "gstreamer-app",
  "gstreamer-video",
  "lazy_static",
+ "mcore",
  "parking_lot",
  "serde",
  "serde_json",

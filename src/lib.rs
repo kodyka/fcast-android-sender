@@ -35,7 +35,6 @@ pub mod log_ring;
 
 mod backend;
 pub mod migration;
-mod whep_signaller_compat;
 
 #[derive(Default)]
 struct RecordingTickerState {

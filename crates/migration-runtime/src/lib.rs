@@ -5,6 +5,7 @@ pub mod media_bridge;
 pub mod messages;
 pub mod nodes;
 pub mod protocol;
+pub mod whep_signaller_compat;
 
 pub use frame_pair::FramePair;
 pub use protocol::{

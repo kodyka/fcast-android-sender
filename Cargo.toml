@@ -8,7 +8,9 @@ chrono = { version = "0.4", features = ["serde"] }
 gst = { package = "gstreamer", version = "0.25" }
 gst-app = { package = "gstreamer-app", version = "0.25", features = ["v1_24"] }
 gst-video = { package = "gstreamer-video", version = "0.25", features = ["v1_24"] }
+gst_rs_webrtc = { package = "gst-plugin-webrtc", version = "0.15", default-features = false, features = ["static"] }
 lazy_static = "1.5"
+mcore = { git = "https://github.com/kodyka/fcast", rev = "63980e6736e65adbd15588d21903d0c02223c15c" }
 parking_lot = "0.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -41,7 +43,7 @@ crossbeam-channel = "0.5.15"
 gst.workspace = true
 fcast-protocol = { git = "https://github.com/kodyka/fcast", rev = "63980e6736e65adbd15588d21903d0c02223c15c" }
 fcast-sender-sdk = { git = "https://github.com/kodyka/fcast", rev = "63980e6736e65adbd15588d21903d0c02223c15c", default-features = false, features = [ "fcast" ] }
-mcore = { git = "https://github.com/kodyka/fcast", rev = "63980e6736e65adbd15588d21903d0c02223c15c" }
+mcore.workspace = true
 parking_lot.workspace = true
 tracing-gstreamer = "0.9.0"
 tracing.workspace = true
@@ -55,7 +57,7 @@ once_cell = "1"
 uuid.workspace = true
 chrono.workspace = true
 tracing-subscriber = "0.3"
-gst_rs_webrtc = { package = "gst-plugin-webrtc", version = "0.15", default-features = false, features = ["static"] }
+gst_rs_webrtc.workspace = true
 gstpop = { path = "vendor/gstpop" }
 migration-runtime = { path = "crates/migration-runtime" }
 
