@@ -4,5 +4,6 @@ pub mod node_manager;
 pub mod nodes;
 pub mod protocol;
 pub mod runtime;
+pub mod service;
 
 pub use protocol::{Command, CommandResult, DestinationFamily, NodeInfo};
