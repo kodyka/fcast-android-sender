@@ -29,6 +29,12 @@
             android:stopWithTask="false"
             android:foregroundServiceType="dataSync" />
 
+        <service
+            android:name=".MigrationRuntimeService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="dataSync" />
+
 
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"
