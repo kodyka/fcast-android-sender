@@ -1,5 +1,5 @@
-use crate::migration::nodes::control::evaluate_control_points;
-use crate::migration::protocol::{ControlPoint, MixerInfo, MixerSlotInfo, NodeInfo, State};
+use crate::nodes::control::evaluate_control_points;
+use crate::protocol::{ControlPoint, MixerInfo, MixerSlotInfo, NodeInfo, State};
 use chrono::{DateTime, Duration, Utc};
 use gst::glib::types::Type;
 use gst::prelude::*;
@@ -1395,7 +1395,7 @@ mod tests {
             id: "cp-width".to_string(),
             time: Utc::now() - Duration::seconds(1),
             value: json!(1280),
-            mode: crate::migration::protocol::ControlMode::Set,
+            mode: crate::protocol::ControlMode::Set,
         };
 
         node.add_control_point("width", cp).unwrap();
@@ -1413,7 +1413,7 @@ mod tests {
             id: "cp-unknown".to_string(),
             time: Utc::now(),
             value: json!(1),
-            mode: crate::migration::protocol::ControlMode::Set,
+            mode: crate::protocol::ControlMode::Set,
         };
 
         let err = node.add_control_point("not-a-setting", cp).unwrap_err();
@@ -1430,7 +1430,7 @@ mod tests {
             id: "cp-vol".to_string(),
             time: Utc::now() - Duration::seconds(1),
             value: json!(0.2),
-            mode: crate::migration::protocol::ControlMode::Set,
+            mode: crate::protocol::ControlMode::Set,
         };
         node.add_slot_control_point("slot-1", "audio::volume", cp)
             .unwrap();

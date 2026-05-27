@@ -1,4 +1,4 @@
-use crate::migration::protocol::{ControlMode, ControlPoint};
+use crate::protocol::{ControlMode, ControlPoint};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 

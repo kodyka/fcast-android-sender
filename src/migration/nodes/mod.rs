@@ -1,9 +1,7 @@
-pub(crate) mod control;
+pub use migration_runtime::nodes::{control, mixer, source, video_generator};
+
 pub mod destination;
-pub mod mixer;
 pub mod screen_capture;
-pub mod source;
-pub mod video_generator;
 
 pub use destination::DestinationNode;
 pub use mixer::MixerNode;

@@ -1,4 +1,4 @@
-use crate::migration::protocol::{Command, CommandResult, ControlPoint, NodeInfo, State};
+use crate::protocol::{Command, CommandResult, ControlPoint, NodeInfo, State};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -87,7 +87,7 @@ pub enum MessageResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::migration::protocol::{Command, ControlMode, MixerInfo, MixerSlotInfo};
+    use crate::protocol::{Command, ControlMode, MixerInfo, MixerSlotInfo};
     use serde_json::json;
     use std::collections::HashMap;
 
