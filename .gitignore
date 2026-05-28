@@ -14,3 +14,7 @@ target/
 Thumbs.db
 .android/
 scr/
+.antigravitycli
+gst-android-build
+tmp
+.claude
