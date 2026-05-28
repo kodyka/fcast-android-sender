@@ -1186,6 +1186,31 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
                 1, 1, Gravity.BOTTOM | Gravity.START);
         root.addView(imeView, lp);
 
+        root.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
+            Log.d(TAG, "onGlobalFocusChanged: oldFocus=" + oldFocus + ", newFocus=" + newFocus);
+            if (newFocus != null) {
+                String className = newFocus.getClass().getName();
+                Log.d(TAG, "newFocus class=" + className
+                        + ", isFocused=" + newFocus.isFocused()
+                        + ", hasWindowFocus=" + newFocus.hasWindowFocus());
+
+                if (className.contains("SlintInputView")) {
+                    Log.d(TAG, "Intercepted SlintInputView focus! Forcing WindowInsetsController show IME.");
+                    newFocus.postDelayed(() -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            WindowInsetsController c = newFocus.getWindowInsetsController();
+                            if (c != null) {
+                                c.show(WindowInsets.Type.ime());
+                                Log.d(TAG, "Forced show IME via WindowInsetsController on SlintInputView completed");
+                            } else {
+                                Log.w(TAG, "SlintInputView has no WindowInsetsController");
+                            }
+                        }
+                    }, 100);
+                }
+            }
+        });
+
         Log.i(TAG, "Android 12 IME bridge installed (SDK="
                 + Build.VERSION.SDK_INT + ")");
     }
