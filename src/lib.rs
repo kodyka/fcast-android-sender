@@ -34,6 +34,7 @@ use tracing::{info, warn};
 pub mod log_ring;
 
 mod backend;
+mod gstpop_service;
 mod migration_service;
 
 #[derive(Default)]
@@ -3008,9 +3009,7 @@ pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeStartG
 ) -> jni::sys::jstring {
     let config = jstring_to_string(&mut env, &config_json).unwrap_or_default();
     let port = parse_gstpop_config_port(&config).unwrap_or(9000);
-    let status = HOST_RUNTIME.block_on(async {
-        crate::backend::gstpop::embedded::start_embedded(port).await
-    });
+    let status = HOST_RUNTIME.block_on(async { gstpop_runtime::start_embedded(port).await });
     let json = serde_json::to_string(&status).unwrap_or_else(|_| "{}".into());
     env.new_string(json).expect("new_string").into_raw()
 }
@@ -3024,8 +3023,7 @@ pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeStopGs
     mut env: jni::JNIEnv<'local>,
     _class: jni::objects::JClass<'local>,
 ) -> jni::sys::jstring {
-    let status = HOST_RUNTIME
-        .block_on(async { crate::backend::gstpop::embedded::stop_embedded().await });
+    let status = HOST_RUNTIME.block_on(async { gstpop_runtime::stop_embedded().await });
     let json = serde_json::to_string(&status).unwrap_or_else(|_| "{}".into());
     env.new_string(json).expect("new_string").into_raw()
 }
@@ -3039,7 +3037,7 @@ pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeGetGst
     mut env: jni::JNIEnv<'local>,
     _class: jni::objects::JClass<'local>,
 ) -> jni::sys::jstring {
-    let status = crate::backend::gstpop::embedded::embedded_status();
+    let status = gstpop_runtime::embedded_status();
     let json = serde_json::to_string(&status).unwrap_or_else(|_| "{}".into());
     env.new_string(json).expect("new_string").into_raw()
 }
@@ -3048,7 +3046,7 @@ pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeGetGst
 fn parse_gstpop_config_port(json: &str) -> Option<u16> {
     let v: serde_json::Value = serde_json::from_str(json).ok()?;
     let url = v.get("gstpop_url")?.as_str()?;
-    Some(crate::backend::gstpop::embedded::url_port(url))
+    Some(gstpop_runtime::url_port(url))
 }
 
 // ── migration runtime service host JNI bridge ────────────────────────────────

@@ -229,7 +229,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "gst-plugin-webrtc",
- "gstpop",
+ "gstpop-runtime",
  "gstreamer 0.25.2",
  "gstreamer-app",
  "gstreamer-video",
@@ -2482,6 +2482,25 @@ dependencies = [
  "tokio-tungstenite",
  "tracing",
  "zbus",
+]
+
+[[package]]
+name = "gstpop-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "futures-util",
+ "gstpop",
+ "log",
+ "once_cell",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
