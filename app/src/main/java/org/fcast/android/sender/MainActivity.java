@@ -1191,6 +1191,91 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
                 + Build.VERSION.SDK_INT + ")");
     }
 
+    /**
+     * Called from native code on Android 12 / 12L to bring up the IME.
+     * On every other Android version this is a no-op; the native side
+     * should fall back to ANativeActivity_showSoftInput() in that case
+     * (see Step 5).
+     *
+     * @param inputType one of android.text.InputType.* (e.g. TYPE_CLASS_TEXT = 1)
+     */
+    @SuppressWarnings("unused") // called from JNI
+    private void showImeFromNative(int inputType) {
+        if (imeView == null) {
+            // We are not on Android 12 / 12L, or the bridge failed to install.
+            // Do nothing; native code chose the wrong path.
+            Log.w(TAG, "showImeFromNative: imeView null (SDK="
+                    + Build.VERSION.SDK_INT + "), ignoring");
+            return;
+        }
+
+        runOnUiThread(() -> {
+            imeView.setInputTypeValue(inputType);
+
+            // Order is load-bearing: requestFocus() MUST happen before
+            // WindowInsetsController.show(ime()). Without focus on the
+            // editor target, show() either no-ops or attaches to the
+            // plain NativeContentView (the broken case).
+            boolean focused = imeView.requestFocus();
+            Log.d(TAG, "showImeFromNative: requestFocus=" + focused);
+
+            InputMethodManager imm = getSystemService(InputMethodManager.class);
+            if (imm != null) {
+                // Force the IME to (re)build its mirror with the new
+                // EditorInfo we just supplied via setInputTypeValue().
+                imm.restartInput(imeView);
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                WindowInsetsController c = imeView.getWindowInsetsController();
+                if (c != null) {
+                    c.show(WindowInsets.Type.ime());
+                } else {
+                    Log.w(TAG, "showImeFromNative: no WindowInsetsController");
+                }
+            } else if (imm != null) {
+                // Defensive: we should not be here because imeView only
+                // exists on S/S_V2, but keep a sane fallback anyway.
+                imm.showSoftInput(imeView, InputMethodManager.SHOW_IMPLICIT);
+            }
+        });
+    }
+
+    /** Called from native code on Android 12 / 12L to dismiss the IME. */
+    @SuppressWarnings("unused") // called from JNI
+    private void hideImeFromNative() {
+        if (imeView == null) return;
+
+        runOnUiThread(() -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                WindowInsetsController c = imeView.getWindowInsetsController();
+                if (c != null) {
+                    c.hide(WindowInsets.Type.ime());
+                }
+            } else {
+                InputMethodManager imm = getSystemService(InputMethodManager.class);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(imeView.getWindowToken(), 0);
+                }
+            }
+        });
+    }
+
+    /**
+     * Optional: called from native code when the Rust side has changed the
+     * text model and wants the IME to resync. After this, the IME will
+     * re-call onCreateInputConnection() on imeView.
+     */
+    @SuppressWarnings("unused") // called from JNI
+    private void replaceImeTextFromNative(String text, int selStart, int selEnd) {
+        if (imeView == null) return;
+        runOnUiThread(() -> {
+            imeView.replaceState(text, selStart, selEnd);
+            InputMethodManager imm = getSystemService(InputMethodManager.class);
+            if (imm != null) imm.restartInput(imeView);
+        });
+    }
+
     public class ProjectionCallback extends MediaProjection.Callback {
         @Override
         public void onStop() {
