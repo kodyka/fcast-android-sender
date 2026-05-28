@@ -51,7 +51,7 @@ jobs:
           FCAST_KEY_ALIAS:         ${{ secrets.FCAST_KEY_ALIAS }}
           FCAST_KEY_PASSWORD:      ${{ secrets.FCAST_KEY_PASSWORD }}
           FCAST_VERSION_NAME:      ${{ inputs.version-name || github.event.release.tag_name }}
-          FCAST_VERSION_CODE:      ${{ inputs.version-code }}
+          FCAST_VERSION_CODE:      ${{ inputs.version-code || github.run_number }}
         run: |
           ./gradlew --no-daemon assembleRelease \
             -PversionName=$FCAST_VERSION_NAME \
@@ -59,8 +59,8 @@ jobs:
 
       - name: Verify APK signature
         run: |
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose \
-            app/build/outputs/apk/release/app-release.apk
+          APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          "$APKSIGNER" verify --verbose app/build/outputs/apk/release/app-release.apk
 
       - name: Upload signed APK as workflow artifact
         uses: actions/upload-artifact@v4

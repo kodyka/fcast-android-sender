@@ -7,6 +7,7 @@ on:
       - 'crates/**'
       - 'app/src/**'
       - 'ci/**'
+      - '.github/actions/**'
       - '.github/workflows/symbol-stability.yml'
 
 permissions:
@@ -26,6 +27,9 @@ jobs:
         with:
           rust-target: aarch64-linux-android
 
+      - name: Build GStreamer Android JNI glue (PR)
+        run: bash ci/build-gstreamer-android-glue.sh
+
       - name: Build .so from PR
         run: bash ci/build-rust-android-lib.sh debug
 
@@ -42,6 +46,9 @@ jobs:
       - name: Check out base
         run: |
           git checkout ${{ github.event.pull_request.base.sha }}
+
+      - name: Build GStreamer Android JNI glue (base)
+        run: bash ci/build-gstreamer-android-glue.sh
 
       - name: Build .so from base
         run: bash ci/build-rust-android-lib.sh debug

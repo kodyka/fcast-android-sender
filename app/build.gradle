@@ -18,7 +18,8 @@ android {
 
     signingConfigs {
         release {
-            storeFile     file(System.getenv("FCAST_KEYSTORE_PATH") ?: "release.jks")
+            def ksPath = System.getenv("FCAST_KEYSTORE_PATH")
+            storeFile     ksPath ? file(ksPath) : null
             storePassword System.getenv("FCAST_KEYSTORE_PASSWORD") ?: ""
             keyAlias      System.getenv("FCAST_KEY_ALIAS")         ?: ""
             keyPassword   System.getenv("FCAST_KEY_PASSWORD")      ?: ""
