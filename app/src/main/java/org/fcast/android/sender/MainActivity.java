@@ -870,7 +870,7 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
         if (requestCode == REQUEST_CODE && resultCode == RESULT_OK) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 Intent serviceIntent = new Intent(this, ScreenCaptureService.class);
-                serviceIntent.setAction(ACTION_RESULT);
+                serviceIntent.setAction(ScreenCaptureService.ACTION_RESULT);
                 serviceIntent.putExtra("resultCode", resultCode);
                 serviceIntent.putExtra("data", data);
 
