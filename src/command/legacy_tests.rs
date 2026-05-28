@@ -276,3 +276,35 @@ pub(crate) fn migration_test_log_name(test_id: &str) -> &'static str {
         _ => "unknown",
     }
 }
+
+#[cfg(test)]
+mod phase9_dispatch_tests {
+    use super::migration_test_log_name;
+
+    #[test]
+    fn migration_test_log_name_known_ids() {
+        assert_eq!(migration_test_log_name("getinfo"), "legacy-getinfo");
+        assert_eq!(migration_test_log_name("crossfade"), "legacy-crossfade");
+        assert_eq!(migration_test_log_name("smoke"), "graph-smoke");
+    }
+
+    #[test]
+    fn migration_test_log_name_unknown_id() {
+        assert_eq!(migration_test_log_name(""), "unknown");
+        assert_eq!(migration_test_log_name("bogus"), "unknown");
+        assert_eq!(migration_test_log_name("GetInfo"), "unknown");
+    }
+
+    #[test]
+    fn migration_test_id_count_invariant() {
+        const KNOWN: &[&str] = &["getinfo", "crossfade", "smoke"];
+
+        for id in KNOWN {
+            assert_ne!(
+                migration_test_log_name(id),
+                "unknown",
+                "test id {id} should be in the dispatch table"
+            );
+        }
+    }
+}
