@@ -1,3 +1,11 @@
+# DEPRECATED: kept for rollback until two consecutive GitHub-driven releases
+# ship successfully. Do not extend.
+#
+# See docs/refactor-implementation-guide/09-ci-cd-consolidation/.
+#
+# Manual trigger is preserved so the team retains an emergency build path
+# in case the GitHub release workflow regresses.
+
 buildAndroidSenderDockerContainer:
   stage: buildDockerContainers
   image: docker:20.10.16
