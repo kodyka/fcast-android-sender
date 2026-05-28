@@ -15,6 +15,8 @@ use mcore::Event;
 use tracing::{debug, error, info, warn};
 
 #[cfg(target_os = "android")]
+use slint::ComponentHandle;
+#[cfg(target_os = "android")]
 use crate::jni_bridge::helpers::{handle_back_request, jstring_to_string, process_frame};
 
 #[cfg(target_os = "android")]
@@ -100,6 +102,56 @@ pub fn native_qr_scan_result<'local>(
             }
         }
         Err(err) => error!(?err, "Failed to convert jstring to string"),
+    }
+}
+
+// Compile-time guard: if bridge.slint reorders AppState variants, this breaks
+// immediately rather than silently mapping the wrong state at runtime.
+#[cfg(target_os = "android")]
+const _: () = {
+    assert!(crate::AppState::Disconnected as i32 == 0);
+    assert!(crate::AppState::Connecting as i32 == 1);
+    assert!(crate::AppState::WaitingForMedia as i32 == 3);
+    assert!(crate::AppState::Casting as i32 == 4);
+};
+
+#[cfg(target_os = "android")]
+pub fn native_slint_apply_state<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    state: jni::sys::jint,
+    banner: JString<'local>,
+    severity: jni::sys::jint,
+) {
+    let banner_str = jstring_to_string(&mut env, &banner).unwrap_or_default();
+    let next = match state {
+        0 => crate::AppState::Disconnected,
+        1 => crate::AppState::Connecting,
+        3 => crate::AppState::WaitingForMedia,
+        4 => crate::AppState::Casting,
+        _ => crate::AppState::Disconnected,
+    };
+    let banner_severity = match severity {
+        1 => crate::BannerSeverity::Success,
+        2 => crate::BannerSeverity::Warning,
+        3 => crate::BannerSeverity::Error,
+        _ => crate::BannerSeverity::Info,
+    };
+    let banner_visible = !banner_str.is_empty();
+    let Some(ui_weak) = crate::ANDROID_UI.lock().clone() else {
+        warn!("nativeSlintApplyState called before UI initialization");
+        return;
+    };
+    // TODO(step-12): coordinate with Application::flash_banner's generation
+    // counter so state-driven banner clears don't race with auto-hide timers.
+    if let Err(err) = ui_weak.upgrade_in_event_loop(move |ui| {
+        let bridge = ui.global::<crate::Bridge>();
+        bridge.invoke_change_state(next);
+        bridge.set_banner_message(banner_str.into());
+        bridge.set_banner_severity(banner_severity);
+        bridge.set_banner_visible(banner_visible);
+    }) {
+        error!(?err, "Failed to apply Slint state from Kotlin");
     }
 }
 

@@ -105,7 +105,7 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeGraphCommand<
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
-pub extern "C" fn Java_org_fcast_android_sender_FCastDiscoveryListener_serviceFound<'local>(
+pub extern "C" fn Java_org_fcast_android_sender_discovery_FCastDiscoveryListener_serviceFound<'local>(
     env: jni::JNIEnv<'local>,
     class: jni::objects::JClass<'local>,
     name: JString<'local>,
@@ -118,7 +118,7 @@ pub extern "C" fn Java_org_fcast_android_sender_FCastDiscoveryListener_serviceFo
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
-pub extern "C" fn Java_org_fcast_android_sender_FCastDiscoveryListener_serviceLost<'local>(
+pub extern "C" fn Java_org_fcast_android_sender_discovery_FCastDiscoveryListener_serviceLost<'local>(
     env: jni::JNIEnv<'local>,
     class: jni::objects::JClass<'local>,
     name: jni::objects::JString<'local>,
@@ -192,6 +192,19 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeBackPressed<'
     class: jni::objects::JClass<'local>,
 ) {
     crate::jni_bridge::main_activity::native_back_pressed(env, class)
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeSlintApplyState<'local>(
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
+    state: jni::sys::jint,
+    banner: jni::objects::JString<'local>,
+    severity: jni::sys::jint,
+) {
+    crate::jni_bridge::main_activity::native_slint_apply_state(env, class, state, banner, severity)
 }
 
 // ── gst-pop service host JNI bridge ──────────────────────────────────────────
