@@ -36,6 +36,7 @@ publish = false
 [dependencies]
 android_logger = "0.15.0"
 ndk-context = "0.1.1"
+libc = "0.2"
 jni = "0.21.1"
 slint = { version = "1.16.0", default-features = false, features = ["backend-android-activity-06", "compat-1-2", "std"] }
 async-channel = "2.3.1"
@@ -93,3 +94,6 @@ strip = "debuginfo"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 slint = { version = "1.16.0", features = ["backend-winit"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+ndk-sys = "0.6.0"

@@ -2999,7 +2999,7 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeBackPressed<'
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_RustImeView_onTextStateNative<'local>(
     mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    _this: jni::objects::JObject<'local>,
     text: jni::objects::JString<'local>,
     sel_start: jni::sys::jint,
     sel_end: jni::sys::jint,
@@ -3019,7 +3019,7 @@ pub extern "C" fn Java_org_fcast_android_sender_RustImeView_onTextStateNative<'l
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_RustImeView_onImeKeyNative<'local>(
     _env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    _this: jni::objects::JObject<'local>,
     key_code: jni::sys::jint,
     unicode_char: jni::sys::jint,
 ) {
@@ -3034,10 +3034,129 @@ pub extern "C" fn Java_org_fcast_android_sender_RustImeView_onImeKeyNative<'loca
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_RustImeView_onEditorActionNative<'local>(
     _env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    _this: jni::objects::JObject<'local>,
     action_code: jni::sys::jint,
 ) {
     info!("RustImeView_onEditorActionNative action_code={}", action_code);
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "C" fn ANativeActivity_showSoftInput(
+    activity: *mut ndk_sys::ANativeActivity,
+    flags: u32,
+) {
+    let sdk = ndk_sys::android_get_device_api_level();
+    if sdk == 31 || sdk == 32 {
+        info!("ANativeActivity_showSoftInput intercepted on Android 12 / 12L (SDK={})", sdk);
+        if let Ok(ctx) = android_context() {
+            let mut env = match ctx.vm.attach_current_thread() {
+                Ok(env) => env,
+                Err(err) => {
+                    error!(?err, "Failed to attach thread to JVM to show soft keyboard");
+                    return;
+                }
+            };
+
+            let input_type = 1i32; // TYPE_CLASS_TEXT
+            match env.call_method(
+                &ctx.activity,
+                "showImeFromNative",
+                "(I)V",
+                &[input_type.into()],
+            ) {
+                Ok(_) => {
+                    info!("Successfully invoked showImeFromNative via JNI preemption");
+                }
+                Err(err) => {
+                    error!(?err, "Failed to call showImeFromNative via JNI preemption");
+                }
+            }
+            if let Ok(true) = env.exception_check() {
+                let _ = env.exception_clear();
+            }
+        } else {
+            error!("android_context() failed, unable to call showImeFromNative");
+        }
+    } else {
+        type ShowSoftInputFn = unsafe extern "C" fn(*mut ndk_sys::ANativeActivity, u32);
+        static REAL_SHOW: once_cell::sync::Lazy<Option<ShowSoftInputFn>> = once_cell::sync::Lazy::new(|| unsafe {
+            let lib = libc::dlopen(b"libandroid.so\0".as_ptr() as *const libc::c_char, libc::RTLD_LAZY);
+            if lib.is_null() {
+                return None;
+            }
+            let sym = libc::dlsym(lib, b"ANativeActivity_showSoftInput\0".as_ptr() as *const libc::c_char);
+            if sym.is_null() {
+                None
+            } else {
+                Some(std::mem::transmute(sym))
+            }
+        });
+
+        if let Some(real_show) = *REAL_SHOW {
+            real_show(activity, flags);
+        } else {
+            error!("Failed to find real ANativeActivity_showSoftInput in libandroid.so");
+        }
+    }
+}
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub unsafe extern "C" fn ANativeActivity_hideSoftInput(
+    activity: *mut ndk_sys::ANativeActivity,
+    flags: u32,
+) {
+    let sdk = ndk_sys::android_get_device_api_level();
+    if sdk == 31 || sdk == 32 {
+        info!("ANativeActivity_hideSoftInput intercepted on Android 12 / 12L (SDK={})", sdk);
+        if let Ok(ctx) = android_context() {
+            let mut env = match ctx.vm.attach_current_thread() {
+                Ok(env) => env,
+                Err(err) => {
+                    error!(?err, "Failed to attach thread to JVM to hide soft keyboard");
+                    return;
+                }
+            };
+
+            match env.call_method(
+                &ctx.activity,
+                "hideImeFromNative",
+                "()V",
+                &[],
+            ) {
+                Ok(_) => {
+                    info!("Successfully invoked hideImeFromNative via JNI preemption");
+                }
+                Err(err) => {
+                    error!(?err, "Failed to call hideImeFromNative via JNI preemption");
+                }
+            }
+            if let Ok(true) = env.exception_check() {
+                let _ = env.exception_clear();
+            }
+        }
+    } else {
+        type HideSoftInputFn = unsafe extern "C" fn(*mut ndk_sys::ANativeActivity, u32);
+        static REAL_HIDE: once_cell::sync::Lazy<Option<HideSoftInputFn>> = once_cell::sync::Lazy::new(|| unsafe {
+            let lib = libc::dlopen(b"libandroid.so\0".as_ptr() as *const libc::c_char, libc::RTLD_LAZY);
+            if lib.is_null() {
+                return None;
+            }
+            let sym = libc::dlsym(lib, b"ANativeActivity_hideSoftInput\0".as_ptr() as *const libc::c_char);
+            if sym.is_null() {
+                None
+            } else {
+                Some(std::mem::transmute(sym))
+            }
+        });
+
+        if let Some(real_hide) = *REAL_HIDE {
+            real_hide(activity, flags);
+        } else {
+            error!("Failed to find real ANativeActivity_hideSoftInput in libandroid.so");
+        }
+    }
 }
 
 // ── gst-pop service host JNI bridge ──────────────────────────────────────────
