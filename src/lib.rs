@@ -3041,14 +3041,14 @@ pub extern "C" fn Java_org_fcast_android_sender_RustImeView_onEditorActionNative
 }
 
 #[cfg(target_os = "android")]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ANativeActivity_showSoftInput(
     activity: *mut ndk_sys::ANativeActivity,
     flags: u32,
 ) {
     let sdk = ndk_sys::android_get_device_api_level();
     if sdk == 31 || sdk == 32 {
-        info!("ANativeActivity_showSoftInput intercepted on Android 12 / 12L (SDK={})", sdk);
+        debug!("ANativeActivity_showSoftInput intercepted on Android 12 / 12L (SDK={})", sdk);
         if let Ok(ctx) = android_context() {
             let mut env = match ctx.vm.attach_current_thread() {
                 Ok(env) => env,
@@ -3066,7 +3066,7 @@ pub unsafe extern "C" fn ANativeActivity_showSoftInput(
                 &[input_type.into()],
             ) {
                 Ok(_) => {
-                    info!("Successfully invoked showImeFromNative via JNI preemption");
+                    debug!("Successfully invoked showImeFromNative via JNI preemption");
                 }
                 Err(err) => {
                     error!(?err, "Failed to call showImeFromNative via JNI preemption");
@@ -3102,14 +3102,14 @@ pub unsafe extern "C" fn ANativeActivity_showSoftInput(
 }
 
 #[cfg(target_os = "android")]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn ANativeActivity_hideSoftInput(
     activity: *mut ndk_sys::ANativeActivity,
     flags: u32,
 ) {
     let sdk = ndk_sys::android_get_device_api_level();
     if sdk == 31 || sdk == 32 {
-        info!("ANativeActivity_hideSoftInput intercepted on Android 12 / 12L (SDK={})", sdk);
+        debug!("ANativeActivity_hideSoftInput intercepted on Android 12 / 12L (SDK={})", sdk);
         if let Ok(ctx) = android_context() {
             let mut env = match ctx.vm.attach_current_thread() {
                 Ok(env) => env,
@@ -3126,7 +3126,7 @@ pub unsafe extern "C" fn ANativeActivity_hideSoftInput(
                 &[],
             ) {
                 Ok(_) => {
-                    info!("Successfully invoked hideImeFromNative via JNI preemption");
+                    debug!("Successfully invoked hideImeFromNative via JNI preemption");
                 }
                 Err(err) => {
                     error!(?err, "Failed to call hideImeFromNative via JNI preemption");
