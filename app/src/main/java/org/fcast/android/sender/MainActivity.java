@@ -33,8 +33,7 @@ import androidx.annotation.NonNull;
 import org.fcast.android.sender.capture.CaptureConfig;
 import org.fcast.android.sender.capture.CaptureEngine;
 import org.fcast.android.sender.capture.ScreenCaptureCoordinator;
-
-import com.journeyapps.barcodescanner.ScanOptions;
+import org.fcast.android.sender.qr.QrScannerLauncher;
 
 import org.freedesktop.gstreamer.GStreamer;
 import org.json.JSONException;
@@ -170,7 +169,6 @@ class Discoverer {
 
 public class MainActivity extends NativeActivity implements DisplayManager.DisplayListener {
     private static final int REQUEST_CODE = 1;
-    private static final int QR_SCAN_REQUEST_CODE = 2;
     private static final String TAG = "MainActivity";
 
     static {
@@ -180,6 +178,7 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
 
     private DisplayManager displayManager;
     private ScreenCaptureCoordinator coordinator;
+    private QrScannerLauncher qr;
     private final AtomicBoolean graphSmokeSequenceRan = new AtomicBoolean(false);
 
     private AppGraph appGraph() {
@@ -261,6 +260,8 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
         );
         coordinator.attach();
 
+        qr = new QrScannerLauncher(this);
+
         displayManager = (DisplayManager)getSystemService(Context.DISPLAY_SERVICE);
         displayManager.registerDisplayListener(this, new Handler(getMainLooper()));
 
@@ -310,12 +311,7 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
 
     // Called from native code
     private void scanQr() {
-        ScanOptions options = new ScanOptions();
-        options.setDesiredBarcodeFormats(ScanOptions.QR_CODE);
-        // NOTE: crashes if scan succeeds and the screen is oriented differently than what it was when the scan activity was started...
-        options.setOrientationLocked(true);
-        Intent intent = options.createScanIntent(this);
-        startActivityForResult(intent, QR_SCAN_REQUEST_CODE);
+        qr.launch();
     }
 
     // Called from native code
@@ -349,7 +345,7 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
                 Log.d(TAG, "Media projection Canceled");
                 CaptureResultBus.deliver(resultCode, new Intent());
             }
-        } else if (requestCode == QR_SCAN_REQUEST_CODE && resultCode == RESULT_OK) {
+        } else if (requestCode == QrScannerLauncher.REQUEST_CODE && resultCode == RESULT_OK) {
             String result = data.getStringExtra("SCAN_RESULT");
             nativeQrScanResult(result);
         }
