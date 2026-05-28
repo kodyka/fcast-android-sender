@@ -9,8 +9,10 @@ import android.opengl.EGLConfig
 import android.opengl.EGLContext
 import android.opengl.EGLDisplay
 import android.opengl.EGLSurface
+import android.opengl.EGLExt.EGL_OPENGL_ES3_BIT_KHR
 import android.opengl.GLES11Ext.GL_TEXTURE_EXTERNAL_OES
 import android.opengl.GLES20.*
+import android.opengl.GLES30.*
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
@@ -453,7 +455,7 @@ class CaptureEngine {
         private const val TAG = "CaptureEngine"
 
         private val EGL_CONFIG_ATTRIBS = intArrayOf(
-            EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES3_BIT_KHR,
+            EGL14.EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
             EGL14.EGL_RED_SIZE,        8,
             EGL14.EGL_GREEN_SIZE,      8,
             EGL14.EGL_BLUE_SIZE,       8,
