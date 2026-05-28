@@ -3,6 +3,8 @@ package org.fcast.android.sender
 import android.content.Context
 import org.fcast.android.sender.capture.CaptureEngine
 import org.fcast.android.sender.capture.ScreenCaptureCoordinator
+import org.fcast.android.sender.data.AndroidSecretStore
+import org.fcast.android.sender.data.SecretStore
 import org.fcast.android.sender.runtime.JniRuntimeBridge
 import org.fcast.android.sender.runtime.RuntimeBridge
 
@@ -22,6 +24,10 @@ class AppGraph(
 ) {
     val runtime: RuntimeBridge by lazy {
         JniRuntimeBridge(appContext)
+    }
+
+    val secretStore: SecretStore by lazy {
+        AndroidSecretStore(appContext)
     }
 
     /** The coordinator is created lazily so it doesn't bind GL state at process start. */
