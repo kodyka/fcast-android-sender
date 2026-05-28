@@ -19,7 +19,8 @@
       "Bash(gh pr create --title 'ci: add slint-viewer smoke test for ui/main.slint' --body ' *)",
       "Bash(gh pr *)",
       "Bash(~/.cargo/bin/cargo test *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(adb devices *)"
     ]
   }
 }
