@@ -34,6 +34,7 @@ import org.fcast.android.sender.capture.CaptureConfig;
 import org.fcast.android.sender.capture.CaptureEngine;
 import org.fcast.android.sender.capture.ScreenCaptureCoordinator;
 import org.fcast.android.sender.qr.QrScannerLauncher;
+import org.fcast.android.sender.shell.SenderController;
 
 import org.freedesktop.gstreamer.GStreamer;
 import org.json.JSONException;
@@ -179,6 +180,7 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
     private DisplayManager displayManager;
     private ScreenCaptureCoordinator coordinator;
     private QrScannerLauncher qr;
+    private SenderController controller;
     private final AtomicBoolean graphSmokeSequenceRan = new AtomicBoolean(false);
 
     private AppGraph appGraph() {
@@ -261,6 +263,7 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
         coordinator.attach();
 
         qr = new QrScannerLauncher(this);
+        controller = new SenderController(appGraph().getRuntime(), coordinator, qr);
 
         displayManager = (DisplayManager)getSystemService(Context.DISPLAY_SERVICE);
         displayManager.registerDisplayListener(this, new Handler(getMainLooper()));
@@ -274,6 +277,11 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
 
     @Override
     protected void onDestroy() {
+        if (controller != null) {
+            controller.shutdown();
+            controller = null;
+        }
+
         if (coordinator != null) {
             coordinator.shutdown();
             coordinator = null;
