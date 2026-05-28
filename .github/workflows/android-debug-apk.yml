@@ -1,9 +1,8 @@
-name: Android APK Release
+name: Android Debug APK
 
 on:
   push:
-  release:
-    types: [published]
+  pull_request:
   workflow_dispatch:
 
 permissions:
