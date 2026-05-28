@@ -1,0 +1,24 @@
+[package]
+name = "gstpop-runtime"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "In-process gst-pop daemon host + JSON-RPC client (extracted from android-sender)."
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+futures-util.workspace = true
+gstpop = { path = "../../vendor/gstpop" }
+log.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tokio-tungstenite.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full", "test-util", "macros"] }

@@ -94,7 +94,7 @@ pub enum ClassifiedFrame {
     Garbage,
 }
 
-pub(crate) fn classify(text: &str) -> ClassifiedFrame {
+pub fn classify(text: &str) -> ClassifiedFrame {
     let value: Value = match serde_json::from_str(text) {
         Ok(value) => value,
         Err(_) => return ClassifiedFrame::Garbage,
