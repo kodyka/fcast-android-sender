@@ -31,6 +31,7 @@ use tracing::{debug, error};
 #[cfg(target_os = "android")]
 use tracing::{info, warn};
 
+pub mod app;
 pub mod log_ring;
 
 mod backend;
@@ -1419,6 +1420,7 @@ fn default_quick_actions() -> Vec<crate::QuickAction> {
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: PlatformApp) {
+    crate::app::init(crate::app::App::production());
     android_logger::init_once(
         android_logger::Config::default().with_max_level(log::LevelFilter::Debug),
     );

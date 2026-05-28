@@ -182,6 +182,10 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
     private ScreenCaptureCoordinator coordinator;
     private final AtomicBoolean graphSmokeSequenceRan = new AtomicBoolean(false);
 
+    private AppGraph appGraph() {
+        return ((FcastApp) getApplication()).getGraph();
+    }
+
     @Override
     public void onBackPressed() {
         Log.d(TAG, "onBackPressed");
@@ -245,8 +249,7 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
 
         Discoverer discoverer = new Discoverer(this);
 
-        coordinator = new ScreenCaptureCoordinator(
-            getApplicationContext(),
+        coordinator = appGraph().newCaptureCoordinator(
             new ScreenCaptureCoordinator.CaptureCallbacks() {
                 @Override public void onPermissionRequested(Intent intent) {
                     startActivityForResult(intent, REQUEST_CODE);
@@ -254,8 +257,7 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
                 @Override public void onCaptureStarted(int w, int h)       { nativeCaptureStarted(); }
                 @Override public void onCaptureStopped()                    { nativeCaptureStopped(); }
                 @Override public void onCaptureCancelled(String reason)     { nativeCaptureCancelled(); }
-            },
-            CaptureEngine::new
+            }
         );
         coordinator.attach();
 
@@ -600,7 +602,7 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
 
     public static native void nativeProcessFrame(int width, int height, ByteBuffer bufferY, ByteBuffer bufferU, ByteBuffer bufferV);
 
-    native String nativeGraphCommand(String payloadJson);
+    public static native String nativeGraphCommand(String payloadJson);
 
     native void nativeCaptureStarted();
 

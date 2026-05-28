@@ -379,6 +379,7 @@ mod tests {
 
     #[test]
     fn test_switch_media_backend_to_gstpop_integration() {
+        crate::app::init(crate::app::App::production());
         use std::sync::Mutex as StdMutex;
         use tokio::net::TcpListener;
         use tokio_tungstenite::accept_hdr_async;
