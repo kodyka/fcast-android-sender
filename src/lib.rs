@@ -9,8 +9,6 @@ use jni::{
 use mcore::transmission::WhepSink;
 use mcore::{DeviceEvent, Event, ShouldQuit};
 use parking_lot::Mutex;
-#[cfg(target_os = "android")]
-use std::net::Ipv6Addr;
 use std::sync::atomic::AtomicU64;
 #[cfg(not(target_os = "android"))]
 use std::sync::atomic::Ordering;
@@ -18,8 +16,6 @@ use std::sync::atomic::Ordering;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{collections::HashMap, sync::Arc};
 use tracing::{debug, error};
-#[cfg(target_os = "android")]
-use tracing::{info, warn};
 
 pub mod app;
 pub mod application;
@@ -43,12 +39,13 @@ use crate::command::legacy_tests::{
     log_ui_test_status, run_graph_smoke_test, run_legacy_http_crossfade_test,
     run_legacy_http_getinfo_test,
 };
+#[cfg(any(test, target_os = "android"))]
 use crate::command::legacy_tests::migration_test_log_name;
 #[cfg(target_os = "android")]
 use crate::jni_bridge::helpers::handle_back_request;
 use crate::jni_bridge::helpers::{call_java_method_no_args, JavaMethod};
 #[cfg(target_os = "android")]
-use crate::jni_bridge::helpers::{jstring_to_string, process_frame, resolve_android_files_dir};
+use crate::jni_bridge::helpers::resolve_android_files_dir;
 use crate::platform::gst_init::ensure_gstreamer_initialized;
 #[cfg(target_os = "android")]
 use crate::platform::panel_stack::PanelStack;
@@ -1919,197 +1916,65 @@ fn android_main(app: PlatformApp) {
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeGraphCommand<'local>(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
     command_json: jni::objects::JString<'local>,
 ) -> jni::sys::jstring {
-    if let Err(err) = migration_runtime::runtime::start_graph_runtime(
-        migration_runtime::runtime::RuntimeHandles {
-            frame_pair: FRAME_PAIR.clone(),
-        },
-    ) {
-        error!(?err, "Failed to start migrated graph runtime from JNI hook");
-    }
-
-    let response = match jstring_to_string(&mut env, &command_json) {
-        Ok(json) => migration_runtime::runtime::try_handle_command_json(&json),
-        Err(err) => {
-            error!(?err, "Failed to decode graph command payload from Java");
-            migration_runtime::runtime::try_handle_command_json("")
-        }
-    };
-
-    match env.new_string(response) {
-        Ok(jstr) => jstr.into_raw(),
-        Err(err) => {
-            error!(?err, "Failed to allocate Java response string");
-            std::ptr::null_mut()
-        }
-    }
+    crate::jni_bridge::main_activity::native_graph_command(env, class, command_json)
 }
 
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_FCastDiscoveryListener_serviceFound<'local>(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
     name: JString<'local>,
     addrs: jni::objects::JObject,
     port: jni::sys::jint,
 ) {
-    let name = match jstring_to_string(&mut env, &name) {
-        Ok(name) => name,
-        Err(err) => {
-            error!(?err, "Failed to convert jstring to string");
-            return;
-        }
-    };
-    let port = port as u16;
-    let addrs = match jni::objects::JList::from_env(&mut env, &addrs) {
-        Ok(addrs) => addrs,
-        Err(err) => {
-            error!(?err, "Failed to get address list from env");
-            return;
-        }
-    };
-    let mut ip_addrs = Vec::<fcast_sender_sdk::IpAddr>::new();
-    let n_addrs = match addrs.size(&mut env) {
-        Ok(n) => n,
-        Err(err) => {
-            error!(?err, "Failed to get JList size");
-            return;
-        }
-    };
-    for i in 0..n_addrs {
-        let Ok(Some(addr)) = addrs.get(&mut env, i) else {
-            continue;
-        };
-        let buffer = unsafe { JByteBuffer::from_raw(*addr) };
-
-        let buffer_cap = match env.get_direct_buffer_capacity(&buffer) {
-            Ok(cap) => cap,
-            Err(err) => {
-                error!(?err, "Failed to get capacity of the byte buffer");
-                continue;
-            }
-        };
-
-        debug!(buffer_cap);
-
-        let buffer_ptr = match env.get_direct_buffer_address(&buffer) {
-            Ok(ptr) => {
-                assert!(!ptr.is_null());
-                ptr
-            }
-            Err(err) => {
-                error!(?err, "Failed to get buffer address");
-                continue;
-            }
-        };
-
-        let buffer_slice: &[u8] = unsafe { std::slice::from_raw_parts(buffer_ptr, buffer_cap) };
-
-        ip_addrs.push(match buffer_slice.len() {
-            4 => fcast_sender_sdk::IpAddr::v4(
-                buffer_slice[0],
-                buffer_slice[1],
-                buffer_slice[2],
-                buffer_slice[3],
-            ),
-            20 => {
-                let mut addr_slice = [0; 16];
-                for i in 0..addr_slice.len() {
-                    addr_slice[i] = buffer_slice[i];
-                }
-                let addr = Ipv6Addr::from(addr_slice);
-                let scope_id_slice = &buffer_slice[16..20];
-                let this_scope_id = i32::from_le_bytes([
-                    scope_id_slice[0],
-                    scope_id_slice[1],
-                    scope_id_slice[2],
-                    scope_id_slice[3],
-                ]) as u32;
-                let mut ip = fcast_sender_sdk::IpAddr::from(std::net::IpAddr::V6(addr));
-                match &mut ip {
-                    fcast_sender_sdk::IpAddr::V6 { scope_id, .. } => *scope_id = this_scope_id,
-                    _ => (),
-                }
-                ip
-            }
-            len => {
-                error!(len, "Invalid address buffer length");
-                continue;
-            }
-        });
-    }
-
-    let device_info = fcast_sender_sdk::device::DeviceInfo::fcast(name, ip_addrs, port);
-    debug!(?device_info, "Found device");
-
-    log_err!(
-        GLOB_EVENT_CHAN.0.send(Event::DeviceAvailable(device_info)),
-        "Failed to send device available event"
-    );
+    crate::jni_bridge::discovery::service_found(env, class, name, addrs, port)
 }
 
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_FCastDiscoveryListener_serviceLost<'local>(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
     name: jni::objects::JString<'local>,
 ) {
-    match jstring_to_string(&mut env, &name) {
-        Ok(name) => log_err!(
-            GLOB_EVENT_CHAN.0.send(Event::DeviceRemoved(name)),
-            "Failed to send device removed event"
-        ),
-        Err(err) => error!(?err, "Failed to convert jstring to string"),
-    }
+    crate::jni_bridge::discovery::service_lost(env, class, name)
 }
 
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeCaptureStarted<'local>(
-    _env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
 ) {
-    debug!("Screen capture was started");
-    log_err!(
-        GLOB_EVENT_CHAN.0.send(Event::CaptureStarted),
-        "Failed to send capture started event"
-    );
+    crate::jni_bridge::main_activity::native_capture_started(env, class)
 }
 
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeCaptureStopped<'local>(
-    _env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
 ) {
-    debug!("Screen capture was stopped");
-    log_err!(
-        GLOB_EVENT_CHAN.0.send(Event::CaptureStopped),
-        "Failed to send capture stopped event"
-    );
+    crate::jni_bridge::main_activity::native_capture_stopped(env, class)
 }
 
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeCaptureCancelled<'local>(
-    _env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
 ) {
-    debug!("Screen capture was cancelled");
-    log_err!(
-        GLOB_EVENT_CHAN.0.send(Event::CaptureCancelled),
-        "Failed to send capture cancelled event"
-    );
+    crate::jni_bridge::main_activity::native_capture_cancelled(env, class)
 }
 
 #[cfg(target_os = "android")]
@@ -2117,54 +1982,37 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeCaptureCancel
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeProcessFrame<'local>(
     env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    class: jni::objects::JClass<'local>,
     width: jni::sys::jint,
     height: jni::sys::jint,
     buffer_y: JByteBuffer<'local>,
     buffer_u: JByteBuffer<'local>,
     buffer_v: JByteBuffer<'local>,
 ) {
-    if let Err(err) = process_frame(env, width, height, buffer_y, buffer_u, buffer_v) {
-        error!(?err, "Failed to process frame");
-    }
+    crate::jni_bridge::main_activity::native_process_frame(
+        env, class, width, height, buffer_y, buffer_u, buffer_v,
+    )
 }
 
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeQrScanResult<'local>(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
     result: jni::objects::JString<'local>,
 ) {
-    match jstring_to_string(&mut env, &result) {
-        Ok(result) => log_err!(
-            GLOB_EVENT_CHAN.0.send(Event::QrScanResult(result)),
-            "Failed to send device removed event"
-        ),
-        Err(err) => error!(?err, "Failed to convert jstring to string"),
-    }
+    crate::jni_bridge::main_activity::native_qr_scan_result(env, class, result)
 }
 
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeBackPressed<'local>(
-    _env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
 ) {
-    info!("nativeBackPressed");
-    let Some(ui_weak) = ANDROID_UI.lock().clone() else {
-        warn!("Ignoring back press before UI initialization");
-        return;
-    };
-    let app = ANDROID_APP.lock().clone();
-
-    if let Err(err) = ui_weak.upgrade_in_event_loop(move |ui| {
-        handle_back_request(&ui, app.as_ref());
-    }) {
-        error!(?err, "Failed to dispatch Android back press to UI");
-    }
+    crate::jni_bridge::main_activity::native_back_pressed(env, class)
 }
 
 // ── gst-pop service host JNI bridge ──────────────────────────────────────────
@@ -2176,15 +2024,11 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeBackPressed<'
 pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeStartGstPopServiceHost<
     'local,
 >(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
     config_json: jni::objects::JString<'local>,
 ) -> jni::sys::jstring {
-    let config = jstring_to_string(&mut env, &config_json).unwrap_or_default();
-    let port = parse_gstpop_config_port(&config).unwrap_or(9000);
-    let status = HOST_RUNTIME.block_on(async { gstpop_runtime::start_embedded(port).await });
-    let json = serde_json::to_string(&status).unwrap_or_else(|_| "{}".into());
-    env.new_string(json).expect("new_string").into_raw()
+    crate::jni_bridge::gstpop_bridge::native_start(env, class, config_json)
 }
 
 #[cfg(target_os = "android")]
@@ -2193,12 +2037,10 @@ pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeStartG
 pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeStopGstPopServiceHost<
     'local,
 >(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
 ) -> jni::sys::jstring {
-    let status = HOST_RUNTIME.block_on(async { gstpop_runtime::stop_embedded().await });
-    let json = serde_json::to_string(&status).unwrap_or_else(|_| "{}".into());
-    env.new_string(json).expect("new_string").into_raw()
+    crate::jni_bridge::gstpop_bridge::native_stop(env, class)
 }
 
 #[cfg(target_os = "android")]
@@ -2207,19 +2049,10 @@ pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeStopGs
 pub extern "C" fn Java_org_fcast_android_sender_GstPopServiceBridge_nativeGetGstPopServiceStatus<
     'local,
 >(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
 ) -> jni::sys::jstring {
-    let status = gstpop_runtime::embedded_status();
-    let json = serde_json::to_string(&status).unwrap_or_else(|_| "{}".into());
-    env.new_string(json).expect("new_string").into_raw()
-}
-
-#[cfg(target_os = "android")]
-fn parse_gstpop_config_port(json: &str) -> Option<u16> {
-    let v: serde_json::Value = serde_json::from_str(json).ok()?;
-    let url = v.get("gstpop_url")?.as_str()?;
-    Some(gstpop_runtime::url_port(url))
+    crate::jni_bridge::gstpop_bridge::native_status(env, class)
 }
 
 // ── migration runtime service host JNI bridge ────────────────────────────────
@@ -2232,21 +2065,11 @@ fn parse_gstpop_config_port(json: &str) -> Option<u16> {
 pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_nativeStartMigrationRuntimeHost<
     'local,
 >(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
-    _config_json: jni::objects::JString<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
+    config_json: jni::objects::JString<'local>,
 ) -> jni::sys::jstring {
-    // Migration runtime currently has no start-time config; the JString is
-    // accepted for API symmetry with GstPopServiceBridge and ignored.
-    let json = match migration_runtime::runtime::start_graph_runtime(
-        migration_runtime::runtime::RuntimeHandles {
-            frame_pair: FRAME_PAIR.clone(),
-        },
-    ) {
-        Ok(()) => migration_runtime_status_json("running", None),
-        Err(err) => migration_runtime_status_json("error", Some(&err.to_string())),
-    };
-    env.new_string(json).expect("new_string").into_raw()
+    crate::jni_bridge::migration_bridge::native_start(env, class, config_json)
 }
 
 #[cfg(target_os = "android")]
@@ -2255,14 +2078,10 @@ pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_na
 pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_nativeStopMigrationRuntimeHost<
     'local,
 >(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
 ) -> jni::sys::jstring {
-    let json = match migration_runtime::runtime::shutdown_graph_runtime() {
-        Ok(()) => migration_runtime_status_json("stopped", None),
-        Err(err) => migration_runtime_status_json("error", Some(&err.to_string())),
-    };
-    env.new_string(json).expect("new_string").into_raw()
+    crate::jni_bridge::migration_bridge::native_stop(env, class)
 }
 
 #[cfg(target_os = "android")]
@@ -2271,26 +2090,10 @@ pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_na
 pub extern "C" fn Java_org_fcast_android_sender_MigrationRuntimeServiceBridge_nativeGetMigrationRuntimeStatus<
     'local,
 >(
-    mut env: jni::JNIEnv<'local>,
-    _class: jni::objects::JClass<'local>,
+    env: jni::JNIEnv<'local>,
+    class: jni::objects::JClass<'local>,
 ) -> jni::sys::jstring {
-    let state = if migration_runtime::runtime::is_running() {
-        "running"
-    } else {
-        "stopped"
-    };
-    let json = migration_runtime_status_json(state, None);
-    env.new_string(json).expect("new_string").into_raw()
-}
-
-#[cfg(target_os = "android")]
-fn migration_runtime_status_json(state: &str, last_error: Option<&str>) -> String {
-    let mut value = serde_json::json!({ "state": state });
-    if let Some(err) = last_error {
-        value["last_error"] = serde_json::Value::String(err.to_string());
-    }
-    serde_json::to_string(&value)
-        .unwrap_or_else(|_| format!("{{\"state\":\"{}\"}}", state.replace('"', "'")))
+    crate::jni_bridge::migration_bridge::native_status(env, class)
 }
 #[cfg(test)]
 mod phase9_dispatch_tests {
