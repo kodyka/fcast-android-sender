@@ -12,7 +12,7 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::Result;
 use fcast_sender_sdk::{context::CastContext, device, device::DeviceInfo};
 #[cfg(target_os = "android")]
-use jni::{objects::JObject, JavaVM};
+use jni::objects::JObject;
 #[cfg(not(target_os = "android"))]
 use mcore::transmission::WhepSink;
 use mcore::{DeviceEvent, Event, ShouldQuit};
@@ -20,6 +20,8 @@ use slint::ComponentHandle;
 use tracing::{debug, error};
 
 use crate::jni_bridge::helpers::{call_java_method_no_args, JavaMethod};
+#[cfg(target_os = "android")]
+use crate::jni_bridge::helpers::vm;
 use crate::platform::gst_init::ensure_gstreamer_initialized;
 use crate::platform::platform_app::PlatformApp;
 use crate::{AppState, BannerSeverity, Bridge, MainWindow, ReceiverItem, GLOB_EVENT_CHAN};
@@ -534,14 +536,13 @@ impl Application {
 
                 let android_app = self.android_app.clone();
                 self.ui_weak.upgrade_in_event_loop(move |ui| {
-                    let vm = unsafe {
-                        let ptr = android_app.vm_as_ptr() as *mut jni::sys::JavaVM;
-                        assert!(!ptr.is_null(), "JavaVM ptr is null");
-                        JavaVM::from_raw(ptr).unwrap()
-                    };
+                    let vm = vm();
+                    let ptr = android_app.activity_as_ptr() as *mut jni::sys::_jobject;
+                    assert!(!ptr.is_null(), "Activity ptr is null");
+                    // SAFETY: PlatformApp owns the Activity for the active
+                    // Android UI session. The JObject wrapper is used only for
+                    // this immediate startScreenCapture call.
                     let activity = unsafe {
-                        let ptr = android_app.activity_as_ptr() as *mut jni::sys::_jobject;
-                        assert!(!ptr.is_null(), "Activity ptr is null");
                         JObject::from_raw(ptr)
                     };
 

@@ -13,9 +13,13 @@ use jni::{
     JavaVM,
 };
 #[cfg(target_os = "android")]
+use once_cell::sync::OnceCell;
+#[cfg(target_os = "android")]
 use slint::ComponentHandle;
 #[cfg(target_os = "android")]
 use std::path::PathBuf;
+#[cfg(target_os = "android")]
+use std::sync::Arc;
 #[cfg(target_os = "android")]
 use tracing::{error, warn};
 
@@ -31,6 +35,27 @@ pub(crate) fn jstring_to_string<'local>(
     Ok(env.get_string(s)?.to_string_lossy().to_string())
 }
 
+#[cfg(target_os = "android")]
+static VM: OnceCell<Arc<JavaVM>> = OnceCell::new();
+
+#[cfg(target_os = "android")]
+pub(crate) fn init_vm(vm: JavaVM) -> Arc<JavaVM> {
+    let vm = Arc::new(vm);
+    if VM.set(vm.clone()).is_err() {
+        warn!("init_vm called twice; keeping the first JavaVM handle");
+    }
+    VM.get()
+        .expect("JavaVM missing immediately after init_vm")
+        .clone()
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn vm() -> Arc<JavaVM> {
+    VM.get()
+        .expect("JavaVM not initialised; call init_vm() from android_main")
+        .clone()
+}
+
 #[derive(Debug)]
 pub(crate) enum JavaMethod {
     StopCapture,
@@ -40,14 +65,13 @@ pub(crate) enum JavaMethod {
 
 #[cfg(target_os = "android")]
 pub(crate) fn call_java_method_no_args(app: &PlatformApp, method: JavaMethod) {
-    let vm = unsafe {
-        let ptr = app.vm_as_ptr() as *mut jni::sys::JavaVM;
-        assert!(!ptr.is_null(), "JavaVM ptr is null");
-        JavaVM::from_raw(ptr).unwrap()
-    };
+    let vm = vm();
+    let ptr = app.activity_as_ptr() as *mut jni::sys::_jobject;
+    assert!(!ptr.is_null(), "Activity ptr is null");
+    // SAFETY: PlatformApp owns the Android activity handle for the lifetime of
+    // the Slint Android runtime. This helper only creates a local wrapper for
+    // the immediate call on the current UI callback.
     let activity = unsafe {
-        let ptr = app.activity_as_ptr() as *mut jni::sys::_jobject;
-        assert!(!ptr.is_null(), "Activity ptr is null");
         JObject::from_raw(ptr)
     };
 
@@ -107,14 +131,13 @@ pub(crate) fn handle_back_request(ui: &crate::MainWindow, app: Option<&PlatformA
 
 #[cfg(target_os = "android")]
 pub(crate) fn resolve_android_files_dir(app: &PlatformApp) -> Result<PathBuf> {
-    let vm = unsafe {
-        let ptr = app.vm_as_ptr() as *mut jni::sys::JavaVM;
-        assert!(!ptr.is_null(), "JavaVM ptr is null");
-        JavaVM::from_raw(ptr).unwrap()
-    };
+    let vm = vm();
+    let ptr = app.activity_as_ptr() as *mut jni::sys::_jobject;
+    assert!(!ptr.is_null(), "Activity ptr is null");
+    // SAFETY: PlatformApp exposes the live Activity object owned by the Slint
+    // Android runtime. The wrapper is used only while resolving the files dir
+    // on the current thread and is not retained.
     let activity = unsafe {
-        let ptr = app.activity_as_ptr() as *mut jni::sys::_jobject;
-        assert!(!ptr.is_null(), "Activity ptr is null");
         JObject::from_raw(ptr)
     };
 
@@ -172,6 +195,9 @@ pub(crate) fn process_frame<'local>(
             }
         };
 
+        // SAFETY: get_direct_buffer_address/capacity came from the same live
+        // DirectByteBuffer local reference, and callers pass the buffer through
+        // JNI for the duration of this native frame callback.
         unsafe { Ok(std::slice::from_raw_parts(buffer_ptr, buffer_cap)) }
     }
 

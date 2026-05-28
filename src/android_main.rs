@@ -17,7 +17,7 @@ use crate::command::legacy_tests::{
 };
 use crate::command::legacy_tests::migration_test_log_name;
 use crate::jni_bridge::helpers::{
-    call_java_method_no_args, handle_back_request, resolve_android_files_dir, JavaMethod,
+    call_java_method_no_args, handle_back_request, init_vm, resolve_android_files_dir, JavaMethod,
 };
 use crate::platform::panel_stack::PanelStack;
 use crate::platform::platform_app::{spawn_recording_ticker, PlatformApp, RecordingTickerState};
@@ -28,12 +28,15 @@ const LEGACY_COMMAND_BIND_ADDR: &str = "0.0.0.0:8080";
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: PlatformApp) {
+    let ptr = app.vm_as_ptr() as *mut jni::sys::JavaVM;
+    assert!(!ptr.is_null(), "JavaVM ptr is null");
+    // SAFETY: PlatformApp is provided by Slint's Android bootstrap and exposes
+    // the process JavaVM pointer while android_main is starting.
     let vm = unsafe {
-        let ptr = app.vm_as_ptr() as *mut jni::sys::JavaVM;
-        assert!(!ptr.is_null(), "JavaVM ptr is null");
         jni::JavaVM::from_raw(ptr).unwrap()
     };
-    crate::app::init(crate::app::App::production(vm));
+    let vm = init_vm(vm);
+    crate::app::init(crate::app::App::production(vm.clone()));
     android_logger::init_once(
         android_logger::Config::default().with_max_level(log::LevelFilter::Debug),
     );

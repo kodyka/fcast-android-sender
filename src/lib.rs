@@ -49,7 +49,7 @@ lazy_static::lazy_static! {
 
 #[cfg(target_os = "android")]
 pub(crate) struct AndroidCtx {
-    pub vm: jni::JavaVM,
+    pub vm: Arc<jni::JavaVM>,
     pub activity: jni::objects::JObject<'static>,
 }
 
@@ -59,9 +59,12 @@ pub(crate) fn android_context() -> anyhow::Result<AndroidCtx> {
         .lock()
         .clone()
         .ok_or_else(|| anyhow::anyhow!("android app not installed"))?;
-    let vm_ptr = app.vm_as_ptr() as *mut jni::sys::JavaVM;
+    let vm = crate::jni_bridge::helpers::vm();
     let activity_ptr = app.activity_as_ptr() as *mut jni::sys::_jobject;
-    let vm = unsafe { jni::JavaVM::from_raw(vm_ptr)? };
+    // SAFETY: ANDROID_APP is set from the live PlatformApp during android_main
+    // bootstrap and remains installed while Android service calls can reach
+    // this context. The JObject wrapper is not retained beyond the caller's
+    // immediate JNI invocation.
     let activity = unsafe { jni::objects::JObject::from_raw(activity_ptr) };
     Ok(AndroidCtx { vm, activity })
 }

@@ -51,6 +51,9 @@ pub fn service_found<'local>(
         let Ok(Some(addr)) = addrs.get(&mut env, i) else {
             continue;
         };
+        // SAFETY: The Java list is expected to contain DirectByteBuffer
+        // objects. The local reference returned by JList::get remains valid
+        // for this JNI call, and the wrapper is not retained.
         let buffer = unsafe { JByteBuffer::from_raw(*addr) };
 
         let buffer_cap = match env.get_direct_buffer_capacity(&buffer) {
@@ -74,6 +77,9 @@ pub fn service_found<'local>(
             }
         };
 
+        // SAFETY: The pointer/capacity pair was returned for the same live
+        // DirectByteBuffer local reference and is read before the JNI call
+        // returns.
         let buffer_slice: &[u8] = unsafe { std::slice::from_raw_parts(buffer_ptr, buffer_cap) };
 
         ip_addrs.push(match buffer_slice.len() {

@@ -2,17 +2,18 @@
 
 use jni::objects::{JByteArray, JString, JValue};
 use jni::JavaVM;
+use std::sync::Arc;
 
 use crate::secret::{SecretBytes, SecretError, SecretStore};
 
 const BRIDGE_CLASS: &str = "org/fcast/android/sender/data/SecretStoreBridge";
 
 pub struct JniSecretStore {
-    vm: JavaVM,
+    vm: Arc<JavaVM>,
 }
 
 impl JniSecretStore {
-    pub fn new(vm: JavaVM) -> Self { Self { vm } }
+    pub fn new(vm: Arc<JavaVM>) -> Self { Self { vm } }
 }
 
 impl SecretStore for JniSecretStore {
@@ -42,8 +43,7 @@ impl SecretStore for JniSecretStore {
         let mut buf = vec![0i8; len];
         env.get_byte_array_region(&bytes_j, 0, &mut buf)
             .map_err(|e| SecretError::Backend(format!("get_byte_array_region: {e}")))?;
-        // i8 → u8 reinterpret.
-        let buf_u8 = unsafe { std::mem::transmute::<Vec<i8>, Vec<u8>>(buf) };
+        let buf_u8: Vec<u8> = buf.into_iter().map(|b| b as u8).collect();
         Ok(SecretBytes::new(buf_u8))
     }
 

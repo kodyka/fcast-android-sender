@@ -21,7 +21,7 @@ pub struct App {
 
 impl App {
     #[cfg(target_os = "android")]
-    pub fn production(vm: jni::JavaVM) -> Self {
+    pub fn production(vm: Arc<jni::JavaVM>) -> Self {
         let registry = InMemoryRegistry::new();
         registry.install(BackendKind::Migration, Arc::new(MigrationBackend::new()));
         Self {
