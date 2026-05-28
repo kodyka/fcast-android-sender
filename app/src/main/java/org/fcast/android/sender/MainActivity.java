@@ -200,7 +200,6 @@ class Dimensions {
 }
 
 public class MainActivity extends NativeActivity implements DisplayManager.DisplayListener {
-    public static final String ACTION_RESULT = "org.fcast.android.sender.SCREEN_CAPTURE_RESULT";
     private static final int REQUEST_CODE = 1;
     private static final int QR_SCAN_REQUEST_CODE = 2;
     private static final String TAG = "MainActivity";
@@ -342,6 +341,137 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
                 requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 101);
             }
         }
+    }
+
+    private void releaseEglResources() {
+        if (glHandler == null) {
+            return;
+        }
+
+        Runnable action = () -> {
+            try {
+                if (yProg != null) {
+                    glDeleteProgram(yProg.program);
+                    yProg = null;
+                }
+                if (uProg != null) {
+                    glDeleteProgram(uProg.program);
+                    uProg = null;
+                }
+                if (vProg != null) {
+                    glDeleteProgram(vProg.program);
+                    vProg = null;
+                }
+
+                if (yFramebuffer != null || uFramebuffer != null || vFramebuffer != null) {
+                    int yFboId = yFramebuffer != null ? yFramebuffer.fboId : 0;
+                    int uFboId = uFramebuffer != null ? uFramebuffer.fboId : 0;
+                    int vFboId = vFramebuffer != null ? vFramebuffer.fboId : 0;
+                    glDeleteFramebuffers(3, new int[]{yFboId, uFboId, vFboId}, 0);
+
+                    int yTexId = yFramebuffer != null ? yFramebuffer.texId : 0;
+                    int uTexId = uFramebuffer != null ? uFramebuffer.texId : 0;
+                    int vTexId = vFramebuffer != null ? vFramebuffer.texId : 0;
+                    glDeleteTextures(4, new int[]{oesTexId, yTexId, uTexId, vTexId}, 0);
+
+                    yFramebuffer = null;
+                    uFramebuffer = null;
+                    vFramebuffer = null;
+                }
+
+                if (eglDisplay != null && eglDisplay != EGL14.EGL_NO_DISPLAY) {
+                    EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);
+
+                    if (eglSurface != null && eglSurface != EGL14.EGL_NO_SURFACE) {
+                        EGL14.eglDestroySurface(eglDisplay, eglSurface);
+                        eglSurface = EGL14.EGL_NO_SURFACE;
+                    }
+
+                    if (eglContext != null && eglContext != EGL14.EGL_NO_CONTEXT) {
+                        EGL14.eglDestroyContext(eglDisplay, eglContext);
+                        eglContext = EGL14.EGL_NO_CONTEXT;
+                    }
+
+                    EGL14.eglTerminate(eglDisplay);
+                    eglDisplay = EGL14.EGL_NO_DISPLAY;
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "releaseEglResources failed", t);
+            }
+        };
+
+        if (android.os.Looper.myLooper() == glHandler.getLooper()) {
+            action.run();
+        } else {
+            final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            boolean posted = glHandler.post(() -> {
+                try {
+                    action.run();
+                } finally {
+                    latch.countDown();
+                }
+            });
+
+            if (posted) {
+                try {
+                    latch.await(250, java.util.concurrent.TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        CaptureResultBus.setListener(null);
+
+        if (displayManager != null) {
+            try {
+                displayManager.unregisterDisplayListener(this);
+            } catch (IllegalArgumentException ignored) {
+            }
+            displayManager = null;
+        }
+
+        if (mediaProjection != null) {
+            if (projectionCallback != null) {
+                try {
+                    mediaProjection.unregisterCallback(projectionCallback);
+                } catch (Exception e) {
+                    Log.w(TAG, "unregisterCallback failed", e);
+                }
+            }
+            try {
+                mediaProjection.stop();
+            } catch (Exception e) {
+                Log.w(TAG, "mediaProjection.stop failed", e);
+            }
+            mediaProjection = null;
+        }
+
+        if (glThread != null) {
+            glThread.quitSafely();
+            try {
+                glThread.join(1000L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                Log.w(TAG, "glThread.join interrupted", e);
+            }
+            glThread = null;
+            glHandler = null;
+        }
+
+        releaseEglResources();
+
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onStop() {
+        // onStop intentionally left out — capture must survive background.
+        // See refactor step 03.4 for context.
+        super.onStop();
     }
 
     private static final String vertexShader = """
@@ -717,12 +847,15 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
                 return;
             }
 
-            synchronized (captureLock) {
+            captureLock.lock();
+            try {
                 try {
                     onFrameAvailable(surfaceTexture);
                 } catch (RuntimeException e) {
                     Log.e(TAG, "onFrameAvailable failed: " + e);
                 }
+            } finally {
+                captureLock.unlock();
             }
         }, glHandler);
 
@@ -764,37 +897,9 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
         shouldCapture.set(false);
 
         glHandler.post(() -> {
-            synchronized (captureLock) {
-                if (!EGL14.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)) {
-                    Log.e(TAG, "EGL make current failed: " + EGL14.eglGetError());
-                    return;
-                }
-
-                glDeleteProgram(yProg.program);
-                glDeleteProgram(uProg.program);
-                glDeleteProgram(vProg.program);
-
-                yProg = null;
-                uProg = null;
-                vProg = null;
-
-                glDeleteFramebuffers(3, new int[]{yFramebuffer.fboId, uFramebuffer.fboId, vFramebuffer.fboId}, 0);
-
-                glDeleteTextures(4, new int[]{oesTexId, yFramebuffer.texId, uFramebuffer.texId, vFramebuffer.texId}, 0);
-
-                yFramebuffer = null;
-                uFramebuffer = null;
-                vFramebuffer = null;
-
-                EGL14.eglMakeCurrent(eglDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);
-
-                EGL14.eglDestroySurface(eglDisplay, eglSurface);
-                eglSurface = EGL14.EGL_NO_SURFACE;
-
-                EGL14.eglDestroyContext(eglDisplay, eglContext);
-                eglContext = EGL14.EGL_NO_CONTEXT;
-
-                eglDisplay = EGL14.EGL_NO_DISPLAY;
+            captureLock.lock();
+            try {
+                releaseEglResources();
 
                 if (shouldEmitStopSignal && virtualDisplay != null) {
                     virtualDisplay.release();
@@ -820,6 +925,8 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
                 if (shouldEmitStopSignal) {
                     nativeCaptureStopped();
                 }
+            } finally {
+                captureLock.unlock();
             }
         });
     }
