@@ -16,12 +16,21 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            storeFile     file(System.getenv("FCAST_KEYSTORE_PATH") ?: "release.jks")
+            storePassword System.getenv("FCAST_KEYSTORE_PASSWORD") ?: ""
+            keyAlias      System.getenv("FCAST_KEY_ALIAS")         ?: ""
+            keyPassword   System.getenv("FCAST_KEY_PASSWORD")      ?: ""
+        }
+    }
+
     defaultConfig {
         applicationId "org.fcast.android.sender"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode  (project.findProperty('versionCode')?.toInteger()  ?: 1)
+        versionName  (project.findProperty('versionName')?.toString()   ?: '1.0')
         ndk {
             // Local deploy/debug currently targets arm64 only; packaging
             // all ABI variants produces a universal APK too large to install.
@@ -33,6 +42,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
