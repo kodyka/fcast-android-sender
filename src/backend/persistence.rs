@@ -13,6 +13,8 @@ pub struct StoredBackendConfig {
     #[serde(default)]
     pub gstpop_api_key_alias: Option<String>,
     pub gstpop_pipeline_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gstpop_api_key: Option<String>,
 }
 
 impl StoredBackendConfig {
@@ -22,6 +24,7 @@ impl StoredBackendConfig {
             gstpop_url: "ws://127.0.0.1:9000".into(),
             gstpop_api_key_alias: None,
             gstpop_pipeline_id: "0".into(),
+            gstpop_api_key: None,
         }
     }
 

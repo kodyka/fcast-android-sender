@@ -32,8 +32,9 @@ use tracing::{debug, error};
 use tracing::{info, warn};
 
 pub mod app;
-pub mod secret;
+pub mod config;
 pub mod log_ring;
+pub mod secret;
 
 mod backend;
 mod gstpop_service;
@@ -1432,6 +1433,12 @@ fn android_main(app: PlatformApp) {
     );
 
     let app_clone = app.clone();
+
+    if let Ok(files_dir) = resolve_android_files_dir(&app_clone) {
+        if let Err(e) = crate::config::migration::migrate_config_file(&files_dir) {
+            tracing::warn!("migration config migrate failed: {e}");
+        }
+    }
 
     slint::android::init(app).unwrap();
 

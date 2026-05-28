@@ -342,6 +342,7 @@ fn read_config_from_bridge(weak: &Weak<MainWindow>) -> StoredBackendConfig {
         gstpop_url: bridge.get_gstpop_url().to_string(),
         gstpop_api_key_alias: alias,
         gstpop_pipeline_id: bridge.get_gstpop_pipeline_id().to_string(),
+        gstpop_api_key: None,
     }
 }
 
