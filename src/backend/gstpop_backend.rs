@@ -4,8 +4,8 @@ use anyhow::{bail, Context, Result};
 use serde_json::{json, Value};
 use tokio::sync::Mutex;
 
-use super::client::GstPopClient;
 use crate::backend::{BackendKind, BackendStatus, MediaBackend};
+use gstpop_runtime::GstPopClient;
 
 pub struct GstPopBackend {
     client: Arc<Mutex<Option<GstPopClient>>>,

@@ -9,7 +9,7 @@ use super::{
     current, from_slint, install, into_slint, BackendKind, BackendStatus, MediaBackend,
     MigrationBackend,
 };
-use crate::backend::gstpop::GstPopBackend;
+use crate::backend::GstPopBackend;
 use crate::MainWindow;
 
 pub struct BackendLifecycle {
@@ -81,7 +81,7 @@ impl BackendLifecycle {
             let weak = start_weak.clone();
             tokio::spawn(async move {
                 push_state(&weak, crate::MediaBackendState::Starting);
-                if let Err(err) = super::gstpop::service::request_service_start(&config) {
+                if let Err(err) = crate::gstpop_service::request_service_start(&config) {
                     push_error(&weak, &format!("service start failed: {err}"));
                 }
             });
@@ -89,7 +89,7 @@ impl BackendLifecycle {
 
         let stop_weak = ui.as_weak();
         bridge.on_stop_gstpop_service(move || {
-            super::gstpop::service::request_service_stop();
+            crate::gstpop_service::request_service_stop();
             let weak = stop_weak.clone();
             let _ = weak.upgrade_in_event_loop(move |ui| {
                 let bridge = ui.global::<crate::Bridge>();
@@ -133,12 +133,12 @@ impl BackendLifecycle {
                 tokio::time::interval(std::time::Duration::from_millis(1000));
             loop {
                 ticker.tick().await;
-                let status = super::gstpop::embedded::embedded_status();
+                let status = gstpop_runtime::embedded_status();
                 let state_str: &'static str = match status.state {
-                    super::gstpop::embedded::EmbeddedState::Stopped => "stopped",
-                    super::gstpop::embedded::EmbeddedState::Starting => "starting",
-                    super::gstpop::embedded::EmbeddedState::Running => "running",
-                    super::gstpop::embedded::EmbeddedState::Error => "error",
+                    gstpop_runtime::EmbeddedState::Stopped => "stopped",
+                    gstpop_runtime::EmbeddedState::Starting => "starting",
+                    gstpop_runtime::EmbeddedState::Running => "running",
+                    gstpop_runtime::EmbeddedState::Error => "error",
                 };
                 let externally = status.externally_owned;
                 let _ = poll_weak.upgrade_in_event_loop(move |ui| {
@@ -197,7 +197,8 @@ impl BackendLifecycle {
     }
 
     fn autostart(self: Arc<Self>, weak: Weak<MainWindow>) {
-        use super::gstpop::{embedded, service};
+        use crate::gstpop_service as service;
+        use gstpop_runtime as embedded;
 
         if self.initial_config.kind == BackendKind::GstPop
             && embedded::is_localhost(&self.initial_config.gstpop_url)
@@ -231,7 +232,8 @@ impl BackendLifecycle {
     }
 
     async fn apply(&self, config: StoredBackendConfig, weak: Weak<MainWindow>) -> Result<()> {
-        use super::gstpop::{embedded, service};
+        use crate::gstpop_service as service;
+        use gstpop_runtime as embedded;
 
         let previous = current();
 

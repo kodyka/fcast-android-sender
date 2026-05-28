@@ -1,9 +1,10 @@
-pub mod gstpop;
+mod gstpop_backend;
 mod kind;
 pub mod lifecycle;
 mod migration_backend;
 pub mod persistence;
 
+pub use gstpop_backend::GstPopBackend;
 pub use kind::BackendKind;
 pub use migration_backend::MigrationBackend;
 
