@@ -1,7 +1,5 @@
 package org.fcast.android.sender;
 
-import static org.fcast.android.sender.MainActivity.ACTION_MEDIA_PROJECTION_STARTED;
-
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -14,7 +12,6 @@ import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class ScreenCaptureService extends Service {
     private static final String TAG = "ScreenCaptureService";
@@ -72,15 +69,10 @@ public class ScreenCaptureService extends Service {
             return START_NOT_STICKY;
         }
 
-        Intent broadcastIntent = new Intent(this, MainActivity.CaptureBroadcastReceiver.class);
-        broadcastIntent.setAction(ACTION_MEDIA_PROJECTION_STARTED);
-        broadcastIntent.putExtra("resultCode", resultCode);
-        broadcastIntent.putExtra("data", data);
-
         startForeground(1, notification);
         Log.d(TAG, "Started foreground");
 
-        LocalBroadcastManager.getInstance(this).sendBroadcast(broadcastIntent);
+        CaptureResultBus.deliver(resultCode, data);
         return START_NOT_STICKY;
     }
 
