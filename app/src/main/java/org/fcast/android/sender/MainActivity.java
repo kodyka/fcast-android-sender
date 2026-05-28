@@ -7,10 +7,8 @@ import static android.opengl.GLES30.*;
 
 import android.app.Activity;
 import android.app.NativeActivity;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.*;
 import android.graphics.SurfaceTexture;
 import android.hardware.display.DisplayManager;
@@ -29,8 +27,8 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.*;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.journeyapps.barcodescanner.ScanOptions;
 
@@ -203,7 +201,6 @@ class Dimensions {
 
 public class MainActivity extends NativeActivity implements DisplayManager.DisplayListener {
     public static final String ACTION_RESULT = "org.fcast.android.sender.SCREEN_CAPTURE_RESULT";
-    public static final String ACTION_MEDIA_PROJECTION_STARTED = "org.fcast.android.sender.ACTION_MEDIA_PROJECTION_STARTED";
     private static final int REQUEST_CODE = 1;
     private static final int QR_SCAN_REQUEST_CODE = 2;
     private static final String TAG = "MainActivity";
@@ -307,20 +304,12 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
         }
     }
 
-    public class CaptureBroadcastReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Log.d(TAG, "Broadcast event intent=" + intent);
+    private CaptureResultBus.Listener captureListener;
 
-            if (ACTION_MEDIA_PROJECTION_STARTED.equals(intent.getAction())) {
-                int resultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED);
-                Intent data = intent.getParcelableExtra("data");
-                initializeCapture(resultCode, data);
-            }
-        }
+    @MainThread
+    private void onCaptureResult(int resultCode, @NonNull Intent data) {
+        initializeCapture(resultCode, data);
     }
-
-    private final CaptureBroadcastReceiver receiver = new CaptureBroadcastReceiver();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -342,9 +331,8 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
         glThread.start();
         glHandler = new Handler(glThread.getLooper());
 
-        IntentFilter filter = new IntentFilter(ACTION_MEDIA_PROJECTION_STARTED);
-        filter.addCategory(Intent.CATEGORY_DEFAULT);
-        LocalBroadcastManager.getInstance(this).registerReceiver(receiver, filter);
+        captureListener = result -> onCaptureResult(result.resultCode, result.data);
+        CaptureResultBus.setListener(captureListener);
 
         displayManager = (DisplayManager)getSystemService(Context.DISPLAY_SERVICE);
         displayManager.registerDisplayListener(this, new Handler(getMainLooper()));
