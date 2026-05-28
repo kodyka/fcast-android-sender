@@ -2994,6 +2994,52 @@ pub extern "C" fn Java_org_fcast_android_sender_MainActivity_nativeBackPressed<'
     }
 }
 
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_RustImeView_onTextStateNative<'local>(
+    mut env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+    text: jni::objects::JString<'local>,
+    sel_start: jni::sys::jint,
+    sel_end: jni::sys::jint,
+    comp_start: jni::sys::jint,
+    comp_end: jni::sys::jint,
+) {
+    if let Ok(text_str) = jstring_to_string(&mut env, &text) {
+        info!(
+            "RustImeView_onTextStateNative text={} sel=[{},{}] comp=[{},{}]",
+            text_str, sel_start, sel_end, comp_start, comp_end
+        );
+    }
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_RustImeView_onImeKeyNative<'local>(
+    _env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+    key_code: jni::sys::jint,
+    unicode_char: jni::sys::jint,
+) {
+    info!(
+        "RustImeView_onImeKeyNative key_code={} unicode_char={}",
+        key_code, unicode_char
+    );
+}
+
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[unsafe(no_mangle)]
+pub extern "C" fn Java_org_fcast_android_sender_RustImeView_onEditorActionNative<'local>(
+    _env: jni::JNIEnv<'local>,
+    _class: jni::objects::JClass<'local>,
+    action_code: jni::sys::jint,
+) {
+    info!("RustImeView_onEditorActionNative action_code={}", action_code);
+}
+
 // ── gst-pop service host JNI bridge ──────────────────────────────────────────
 // Symbols match GstPopServiceBridge in the `org.fcast.android.sender` package.
 

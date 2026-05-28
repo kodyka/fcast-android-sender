@@ -138,21 +138,10 @@ public final class RustImeView extends View {
         onTextStateNative(editable.toString(), selStart, selEnd, compStart, compEnd);
     }
 
-    // -------- Native callbacks (stub variant) --------
-    private void onTextStateNative(String text,
-                                   int selStart, int selEnd,
-                                   int compStart, int compEnd) {
-        android.util.Log.d("RustImeView",
-                "text=" + text + " sel=[" + selStart + "," + selEnd + "]"
-                + " comp=[" + compStart + "," + compEnd + "]");
-    }
-
-    private void onImeKeyNative(int keyCode, int unicodeChar) {
-        android.util.Log.d("RustImeView",
-                "key=" + keyCode + " ch=" + unicodeChar);
-    }
-
-    private void onEditorActionNative(int actionCode) {
-        android.util.Log.d("RustImeView", "editorAction=" + actionCode);
-    }
+    // -------- Native callbacks --------
+    private native void onTextStateNative(String text,
+                                          int selStart, int selEnd,
+                                          int compStart, int compEnd);
+    private native void onImeKeyNative(int keyCode, int unicodeChar);
+    private native void onEditorActionNative(int actionCode);
 }
