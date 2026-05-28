@@ -1421,7 +1421,12 @@ fn default_quick_actions() -> Vec<crate::QuickAction> {
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: PlatformApp) {
-    crate::app::init(crate::app::App::production());
+    let vm = unsafe {
+        let ptr = app.vm_as_ptr() as *mut jni::sys::JavaVM;
+        assert!(!ptr.is_null(), "JavaVM ptr is null");
+        jni::JavaVM::from_raw(ptr).unwrap()
+    };
+    crate::app::init(crate::app::App::production(vm));
     android_logger::init_once(
         android_logger::Config::default().with_max_level(log::LevelFilter::Debug),
     );

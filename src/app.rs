@@ -20,8 +20,17 @@ pub struct App {
 }
 
 impl App {
-    /// Build the production App: in-memory registry with the migration backend
-    /// pre-installed (matches the legacy default).
+    #[cfg(target_os = "android")]
+    pub fn production(vm: jni::JavaVM) -> Self {
+        let registry = InMemoryRegistry::new();
+        registry.install(BackendKind::Migration, Arc::new(MigrationBackend::new()));
+        Self {
+            registry: Box::new(registry),
+            secrets: Box::new(crate::secret::jni::JniSecretStore::new(vm)),
+        }
+    }
+
+    #[cfg(not(target_os = "android"))]
     pub fn production() -> Self {
         let registry = InMemoryRegistry::new();
         registry.install(BackendKind::Migration, Arc::new(MigrationBackend::new()));

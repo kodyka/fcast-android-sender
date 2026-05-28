@@ -273,17 +273,17 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
 
     @Override
     protected void onDestroy() {
+        if (coordinator != null) {
+            coordinator.shutdown();
+            coordinator = null;
+        }
+
         if (displayManager != null) {
             try {
                 displayManager.unregisterDisplayListener(this);
             } catch (IllegalArgumentException ignored) {
             }
             displayManager = null;
-        }
-
-        if (coordinator != null) {
-            coordinator.shutdown();
-            coordinator = null;
         }
 
         super.onDestroy();

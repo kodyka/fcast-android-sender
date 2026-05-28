@@ -97,6 +97,9 @@ pub fn resolve_secret_bytes(alias: &str) -> Result<SecretBytes, SecretError> {
     crate::app::app().secrets().get(alias)
 }
 
+#[cfg(target_os = "android")]
+pub mod jni;
+
 #[cfg(test)]
 mod tests {
     use super::*;

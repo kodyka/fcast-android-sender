@@ -433,10 +433,6 @@ class CaptureEngine {
         if (fbos[0] != 0 || fbos[1] != 0 || fbos[2] != 0) {
             glDeleteFramebuffers(3, fbos, 0)
         }
-        yFramebuffer = null
-        uFramebuffer = null
-        vFramebuffer = null
-
         val texs = intArrayOf(
             oesTexId,
             yFramebuffer?.texId ?: 0,
@@ -445,6 +441,9 @@ class CaptureEngine {
         )
         glDeleteTextures(4, texs, 0)
         oesTexId = 0
+        yFramebuffer = null
+        uFramebuffer = null
+        vFramebuffer = null
 
         if (eglSurface != EGL14.EGL_NO_SURFACE) { EGL14.eglDestroySurface(eglDisplay, eglSurface); eglSurface = EGL14.EGL_NO_SURFACE }
         if (eglContext != EGL14.EGL_NO_CONTEXT) { EGL14.eglDestroyContext(eglDisplay, eglContext); eglContext = EGL14.EGL_NO_CONTEXT }

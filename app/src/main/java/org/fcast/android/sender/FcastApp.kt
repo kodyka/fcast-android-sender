@@ -2,6 +2,8 @@ package org.fcast.android.sender
 
 import android.app.Application
 
+import org.fcast.android.sender.data.SecretStoreBridge
+
 /**
  * Single Application subclass; owner of the production [AppGraph].
  *
@@ -14,4 +16,9 @@ import android.app.Application
  */
 class FcastApp : Application() {
     val graph: AppGraph by lazy { AppGraph(applicationContext) }
+
+    override fun onCreate() {
+        super.onCreate()
+        SecretStoreBridge.install(graph.secretStore)
+    }
 }
