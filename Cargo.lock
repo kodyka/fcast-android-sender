@@ -247,6 +247,7 @@ dependencies = [
  "slint",
  "slint-build",
  "tempfile",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-tungstenite",
  "tracing",

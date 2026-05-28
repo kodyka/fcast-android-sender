@@ -32,6 +32,7 @@ use tracing::{debug, error};
 use tracing::{info, warn};
 
 pub mod app;
+pub mod secret;
 pub mod log_ring;
 
 mod backend;

@@ -10,11 +10,13 @@ use once_cell::sync::OnceCell;
 
 use crate::backend::registry::{BackendKind, BackendRegistry, InMemoryRegistry};
 use crate::backend::{MediaBackend, MigrationBackend};
+use crate::secret::{InMemorySecretStore, SecretStore};
 
 /// The composition root for the Rust crate. Constructed once during
 /// android_main / JNI bootstrap.
 pub struct App {
     registry: Box<dyn BackendRegistry>,
+    secrets: Box<dyn SecretStore>,
 }
 
 impl App {
@@ -23,10 +25,19 @@ impl App {
     pub fn production() -> Self {
         let registry = InMemoryRegistry::new();
         registry.install(BackendKind::Migration, Arc::new(MigrationBackend::new()));
-        Self { registry: Box::new(registry) }
+        Self {
+            registry: Box::new(registry),
+            secrets: Box::new(InMemorySecretStore::new()),
+        }
+    }
+
+    pub fn with_secrets(mut self, secrets: Box<dyn SecretStore>) -> Self {
+        self.secrets = secrets;
+        self
     }
 
     pub fn registry(&self) -> &dyn BackendRegistry { self.registry.as_ref() }
+    pub fn secrets(&self) -> &dyn SecretStore { self.secrets.as_ref() }
 }
 
 /// Process-global accessor — returns &'static App after bootstrap.
@@ -44,6 +55,11 @@ pub fn init(app: App) {
 /// Access the App. Panics if init() was not called first.
 pub fn app() -> &'static App {
     APP.get().expect("App not initialised; call init() during JNI bootstrap")
+}
+
+/// Access the App safely without panicking.
+pub fn try_app() -> Option<&'static App> {
+    APP.get()
 }
 
 #[cfg(test)]

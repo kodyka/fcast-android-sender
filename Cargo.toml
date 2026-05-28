@@ -45,6 +45,7 @@ tokio.workspace = true
 gst-video.workspace = true
 gst-app.workspace = true
 anyhow.workspace = true
+thiserror = "1"
 crossbeam-channel = "0.5.15"
 gst.workspace = true
 fcast-protocol = { git = "https://github.com/kodyka/fcast", rev = "63980e6736e65adbd15588d21903d0c02223c15c" }
