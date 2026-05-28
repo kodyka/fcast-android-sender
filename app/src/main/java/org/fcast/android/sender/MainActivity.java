@@ -28,6 +28,9 @@ import android.os.*;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.*;
+import android.widget.FrameLayout;
+import android.view.inputmethod.InputMethodManager;
+import android.text.InputType;
 
 import androidx.annotation.NonNull;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -225,6 +228,8 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
     private HandlerThread glThread;
     private Handler glHandler;
     private DisplayManager displayManager;
+    // Android 12 / 12L only; null on every other Android version.
+    private RustImeView imeView;
     private final ReentrantLock captureLock = new ReentrantLock();
     private final AtomicBoolean graphSmokeSequenceRan = new AtomicBoolean(false);
     private int userMaxWidth = 1920;
@@ -353,6 +358,11 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 101);
             }
+        }
+
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.S
+                || Build.VERSION.SDK_INT == Build.VERSION_CODES.S_V2) {
+            installAndroid12ImeBridge();
         }
     }
 
@@ -1152,6 +1162,34 @@ public class MainActivity extends NativeActivity implements DisplayManager.Displ
     native void nativeQrScanResult(String result);
 
     native void nativeBackPressed();
+
+    /**
+     * Android 12 / 12L only: install an invisible 1x1 editor View into
+     * android.R.id.content so the framework has a valid InputConnection
+     * target. Without this, the IME may appear but isAcceptingText() is
+     * false and modern soft keyboards deliver no characters.
+     */
+    private void installAndroid12ImeBridge() {
+        FrameLayout root = findViewById(android.R.id.content);
+        if (root == null) {
+            Log.w(TAG, "installAndroid12ImeBridge: no android.R.id.content root");
+            return;
+        }
+
+        imeView = new RustImeView(this);
+        imeView.setAlpha(0f);                 // invisible
+        imeView.setFocusable(true);
+        imeView.setFocusableInTouchMode(true);
+
+        // 1x1 at bottom-left so the view never overlaps the native render
+        // surface that NativeActivity installed as the first child.
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                1, 1, Gravity.BOTTOM | Gravity.START);
+        root.addView(imeView, lp);
+
+        Log.i(TAG, "Android 12 IME bridge installed (SDK="
+                + Build.VERSION.SDK_INT + ")");
+    }
 
     public class ProjectionCallback extends MediaProjection.Callback {
         @Override
