@@ -11,6 +11,21 @@ import android.util.Log
 import androidx.annotation.MainThread
 import org.fcast.android.sender.CaptureResultBus
 
+interface ScreenCaptureCoordinator {
+    fun attach()
+    fun startCapture(config: CaptureConfig)
+    fun stopCapture()
+    fun shutdown()
+    val isCapturing: Boolean
+
+    interface CaptureCallbacks {
+        @MainThread fun onPermissionRequested(intent: Intent)
+        @MainThread fun onCaptureStarted(width: Int, height: Int)
+        @MainThread fun onCaptureStopped()
+        @MainThread fun onCaptureCancelled(reason: String)
+    }
+}
+
 /**
  * Coordinates screen capture lifecycle:
  *
@@ -22,18 +37,11 @@ import org.fcast.android.sender.CaptureResultBus
  * Single-instance, owned by AppGraph (step 05) or instantiated directly in
  * MainActivity.onCreate (step 04).
  */
-class ScreenCaptureCoordinator(
+class RealScreenCaptureCoordinator(
     private val applicationContext: Context,
-    private val callbacks: CaptureCallbacks,
+    private val callbacks: ScreenCaptureCoordinator.CaptureCallbacks,
     private val engineFactory: () -> CaptureEngine = { CaptureEngine() },
-) {
-
-    interface CaptureCallbacks {
-        @MainThread fun onPermissionRequested(intent: Intent)
-        @MainThread fun onCaptureStarted(width: Int, height: Int)
-        @MainThread fun onCaptureStopped()
-        @MainThread fun onCaptureCancelled(reason: String)
-    }
+) : ScreenCaptureCoordinator {
 
     private val projectionManager: MediaProjectionManager =
         applicationContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE)
@@ -56,12 +64,12 @@ class ScreenCaptureCoordinator(
     }
 
     @MainThread
-    fun attach() {
+    override fun attach() {
         CaptureResultBus.setListener(captureListener)
     }
 
     @MainThread
-    fun startCapture(config: CaptureConfig) {
+    override fun startCapture(config: CaptureConfig) {
         if (engine != null) {
             Log.w(TAG, "startCapture called while a capture is already running")
             return
@@ -71,7 +79,7 @@ class ScreenCaptureCoordinator(
     }
 
     @MainThread
-    fun stopCapture() {
+    override fun stopCapture() {
         engine?.shutdown()
         engine = null
         projection?.let { p ->
@@ -84,7 +92,7 @@ class ScreenCaptureCoordinator(
     }
 
     @MainThread
-    fun shutdown() {
+    override fun shutdown() {
         stopCapture()
         CaptureResultBus.setListener(null)
     }
@@ -143,7 +151,7 @@ class ScreenCaptureCoordinator(
         }
     }
 
-    val isCapturing: Boolean
+    override val isCapturing: Boolean
         @MainThread get() = engine != null
 
     companion object {

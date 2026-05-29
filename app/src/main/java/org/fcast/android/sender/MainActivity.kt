@@ -69,7 +69,7 @@ class MainActivity : NativeActivity(), DisplayManager.DisplayListener {
         coordinator = (application as FcastApp).graph.newCaptureCoordinator(captureCallbacks)
         coordinator.attach()
 
-        qr = QrScannerLauncher(this)
+        qr = org.fcast.android.sender.qr.RealQrScannerLauncher(this)
         controller = SenderController((application as FcastApp).graph.runtime, coordinator, qr)
 
         activityScope.launch {

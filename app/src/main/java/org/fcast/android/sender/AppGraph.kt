@@ -33,7 +33,7 @@ class AppGraph(
     /** The coordinator is created lazily so it doesn't bind GL state at process start. */
     fun newCaptureCoordinator(
         callbacks: ScreenCaptureCoordinator.CaptureCallbacks,
-    ): ScreenCaptureCoordinator = ScreenCaptureCoordinator(
+    ): ScreenCaptureCoordinator = org.fcast.android.sender.capture.RealScreenCaptureCoordinator(
         applicationContext = appContext,
         callbacks = callbacks,
         engineFactory = { CaptureEngine() },

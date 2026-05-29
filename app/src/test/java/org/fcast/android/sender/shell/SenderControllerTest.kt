@@ -1,52 +1,101 @@
 package org.fcast.android.sender.shell
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.fcast.android.sender.capture.CaptureConfig
+import org.fcast.android.sender.capture.ScreenCaptureCoordinator
+import org.fcast.android.sender.qr.QrScannerLauncher
 import org.fcast.android.sender.runtime.BackendKind
 import org.fcast.android.sender.runtime.BackendStatus
 import org.fcast.android.sender.runtime.RuntimeBridge
 import org.json.JSONObject
-import org.junit.Ignore
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SenderControllerTest {
 
-    // Fakes are referenced inside @Ignore'd bodies and will be replaced by
-    // proper doubles in step 10 (Robolectric setup).
-    @Suppress("unused")
+    private val dispatcher = StandardTestDispatcher()
+
+    @Before fun setUp() { Dispatchers.setMain(dispatcher) }
+    @After  fun tearDown() { Dispatchers.resetMain() }
+
     private class FakeRuntime(
-        private val startStatus: BackendStatus = BackendStatus("running", null, null),
+        val startStatus: BackendStatus = BackendStatus("running", null, null),
+        val statusStatus: BackendStatus = BackendStatus("running", null, null),
     ) : RuntimeBridge {
-        override suspend fun startEmbeddedBackend(kind: BackendKind, configJson: String) = startStatus
-        override suspend fun stopEmbeddedBackend(kind: BackendKind) = BackendStatus("stopped", null, null)
-        override suspend fun backendStatus(kind: BackendKind) = startStatus
+        var lastStartKind: BackendKind? = null
+        var lastStartConfig: String? = null
+        var stopCalledWith: BackendKind? = null
+        override suspend fun startEmbeddedBackend(kind: BackendKind, configJson: String): BackendStatus {
+            lastStartKind = kind; lastStartConfig = configJson; return startStatus
+        }
+        override suspend fun stopEmbeddedBackend(kind: BackendKind): BackendStatus {
+            stopCalledWith = kind; return BackendStatus("stopped", null, null)
+        }
+        override suspend fun backendStatus(kind: BackendKind) = statusStatus
         override suspend fun graphCommand(action: String, params: JSONObject) = JSONObject()
     }
 
-    @Suppress("unused")
-    private class FakeRuntimeError : RuntimeBridge {
-        override suspend fun startEmbeddedBackend(kind: BackendKind, configJson: String) =
-            BackendStatus("error", "daemon not responding", null)
-        override suspend fun stopEmbeddedBackend(kind: BackendKind) = BackendStatus("stopped", null, null)
-        override suspend fun backendStatus(kind: BackendKind) = BackendStatus("error", "daemon not responding", null)
-        override suspend fun graphCommand(action: String, params: JSONObject) = JSONObject()
+    private object NoOpCoordinator : ScreenCaptureCoordinator {
+        override fun attach() {}
+        override fun startCapture(config: CaptureConfig) {}
+        override fun stopCapture() {}
+        override fun shutdown() {}
+        override val isCapturing: Boolean get() = false
     }
 
-    // SenderController requires ScreenCaptureCoordinator (Android context)
-    // and QrScannerLauncher (Activity). Both fakes land in step 10 (Robolectric).
-
-    @Ignore("Requires Robolectric context — wired in step 10")
-    @Test
-    fun startBackend_transitionsToConnected() = runTest {
-        // step 10: val ctrl = SenderController(FakeRuntime(), FakeCoordinator(), FakeQrLauncher())
-        // ctrl.startBackend(BackendKind.GSTPOP, "{}").join()
-        // assertEquals(UiState.Connected(BackendKind.GSTPOP, null), ctrl.uiState.value)
+    private object NoOpQrLauncher : QrScannerLauncher {
+        override fun launch() {}
     }
 
-    @Ignore("Requires Robolectric context — wired in step 10")
+    private fun controller(runtime: RuntimeBridge) =
+        SenderController(runtime, NoOpCoordinator, NoOpQrLauncher)
+
     @Test
-    fun startBackend_transitionsToError() = runTest {
-        // step 10: val ctrl = SenderController(FakeRuntimeError(), FakeCoordinator(), FakeQrLauncher())
-        // ctrl.startBackend(BackendKind.GSTPOP, "{}").join()
-        // assertTrue(ctrl.uiState.value is UiState.Error)
+    fun startBackend_running_yieldsConnected() = runTest {
+        val ctrl = controller(FakeRuntime(BackendStatus("running", "ok", null)))
+        ctrl.startBackend(BackendKind.MIGRATION, "{}").join()
+        advanceUntilIdle()
+        assertEquals(UiState.Connected(BackendKind.MIGRATION, "ok"), ctrl.uiState.value)
+    }
+
+    @Test
+    fun startBackend_error_yieldsError() = runTest {
+        val ctrl = controller(FakeRuntime(BackendStatus("error", "boom", null)))
+        ctrl.startBackend(BackendKind.MIGRATION, "{}").join()
+        advanceUntilIdle()
+        assertEquals(UiState.Error("boom"), ctrl.uiState.value)
+    }
+
+    @Test
+    fun startBackend_unknown_yieldsDisconnected() = runTest {
+        val ctrl = controller(FakeRuntime(BackendStatus("queued", null, null)))
+        ctrl.startBackend(BackendKind.GSTPOP, "{}").join()
+        advanceUntilIdle()
+        assertEquals(UiState.Disconnected, ctrl.uiState.value)
+    }
+
+    @Test
+    fun stopBackend_yieldsDisconnected() = runTest {
+        val ctrl = controller(FakeRuntime(BackendStatus("running", null, null)))
+        ctrl.startBackend(BackendKind.GSTPOP, "{}").join()
+        ctrl.stopBackend(BackendKind.GSTPOP).join()
+        advanceUntilIdle()
+        assertEquals(UiState.Disconnected, ctrl.uiState.value)
+    }
+
+    @Test
+    fun coordinatorCallback_yieldsCasting() = runTest {
+        val ctrl = controller(FakeRuntime())
+        ctrl.onCaptureStartedFromCoordinator(BackendKind.MIGRATION, 1280, 720)
+        assertEquals(UiState.Casting(BackendKind.MIGRATION, 1280, 720), ctrl.uiState.value)
     }
 }
