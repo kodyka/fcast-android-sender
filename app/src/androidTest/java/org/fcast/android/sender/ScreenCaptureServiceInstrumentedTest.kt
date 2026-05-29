@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -42,6 +43,9 @@ class ScreenCaptureServiceInstrumentedTest {
         val info = pm.getServiceInfo(cn, 0)
         // foregroundServiceType is a bitmask; expect MEDIA_PROJECTION = 32.
         val expected = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-        assert((info.foregroundServiceType and expected) != 0)
+        assertTrue(
+            "foregroundServiceType must include MEDIA_PROJECTION — check the manifest declaration",
+            (info.foregroundServiceType and expected) != 0
+        )
     }
 }
