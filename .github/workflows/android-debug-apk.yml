@@ -34,6 +34,16 @@ jobs:
           # Cargo.toml still lists the other Android targets for local/release builds.
           rust-target: aarch64-linux-android
 
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: Build GStreamer Android JNI glue
         run: bash ci/build-gstreamer-android-glue.sh
 

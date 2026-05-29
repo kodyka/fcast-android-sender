@@ -1,0 +1,70 @@
+name: Android Instrumented Tests
+
+on:
+  pull_request:
+    paths:
+      - 'app/src/**'
+      - 'src/**'
+      - 'crates/**'
+      - 'ci/**'
+      - 'Cargo.lock'
+      - '.github/workflows/android-instrumented-tests.yml'
+  schedule:
+    - cron: '0 4 * * *'  # nightly at 04:00 UTC, ~empty US time
+
+permissions:
+  contents: read
+
+jobs:
+  android-instrumented:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Android CI toolchain
+         # CI uses the same custom toolchain action as the debug build pipeline
+        uses: ./.github/actions/android-ci-setup
+        with:
+          rust-target: aarch64-linux-android
+
+      - name: Build GStreamer Android JNI glue
+        run: bash ci/build-gstreamer-android-glue.sh
+
+      - name: Build arm64 Rust Android library (debug)
+        run: bash ci/build-rust-android-lib.sh debug
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666"' \
+            | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run connected tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          ram-size: 4096M
+          disable-animations: true
+          script: |
+            ./gradlew --no-daemon :app:connectedDebugAndroidTest
+
+      - name: Upload connected-test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-instrumented-reports
+          path: app/build/reports/androidTests/connected/
+          retention-days: 7
+
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-screenshots
+          path: /tmp/android-screenshots/
+          retention-days: 7
