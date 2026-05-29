@@ -22,6 +22,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SenderControllerTest {
 
+    // Shared with controller scope so runTest(dispatcher) and SenderController
+    // use the same TestCoroutineScheduler — .join() + advanceUntilIdle() are deterministic.
     private val dispatcher = StandardTestDispatcher()
 
     @Before fun setUp() { Dispatchers.setMain(dispatcher) }
@@ -32,10 +34,9 @@ class SenderControllerTest {
         val statusStatus: BackendStatus = BackendStatus("running", null, null),
     ) : RuntimeBridge {
         var lastStartKind: BackendKind? = null
-        var lastStartConfig: String? = null
         var stopCalledWith: BackendKind? = null
         override suspend fun startEmbeddedBackend(kind: BackendKind, configJson: String): BackendStatus {
-            lastStartKind = kind; lastStartConfig = configJson; return startStatus
+            lastStartKind = kind; return startStatus
         }
         override suspend fun stopEmbeddedBackend(kind: BackendKind): BackendStatus {
             stopCalledWith = kind; return BackendStatus("stopped", null, null)
@@ -57,43 +58,51 @@ class SenderControllerTest {
     }
 
     private fun controller(runtime: RuntimeBridge) =
-        SenderController(runtime, NoOpCoordinator, NoOpQrLauncher)
+        SenderController(runtime, NoOpCoordinator, NoOpQrLauncher, dispatcher)
 
     @Test
-    fun startBackend_running_yieldsConnected() = runTest {
-        val ctrl = controller(FakeRuntime(BackendStatus("running", "ok", null)))
+    fun startBackend_running_yieldsConnected() = runTest(dispatcher) {
+        val fake = FakeRuntime(BackendStatus("running", "ok", null))
+        val ctrl = controller(fake)
         ctrl.startBackend(BackendKind.MIGRATION, "{}").join()
         advanceUntilIdle()
         assertEquals(UiState.Connected(BackendKind.MIGRATION, "ok"), ctrl.uiState.value)
+        assertEquals(BackendKind.MIGRATION, fake.lastStartKind)
     }
 
     @Test
-    fun startBackend_error_yieldsError() = runTest {
-        val ctrl = controller(FakeRuntime(BackendStatus("error", "boom", null)))
+    fun startBackend_error_yieldsError() = runTest(dispatcher) {
+        val fake = FakeRuntime(BackendStatus("error", "boom", null))
+        val ctrl = controller(fake)
         ctrl.startBackend(BackendKind.MIGRATION, "{}").join()
         advanceUntilIdle()
         assertEquals(UiState.Error("boom"), ctrl.uiState.value)
+        assertEquals(BackendKind.MIGRATION, fake.lastStartKind)
     }
 
     @Test
-    fun startBackend_unknown_yieldsDisconnected() = runTest {
-        val ctrl = controller(FakeRuntime(BackendStatus("queued", null, null)))
+    fun startBackend_unknown_yieldsDisconnected() = runTest(dispatcher) {
+        val fake = FakeRuntime(BackendStatus("queued", null, null))
+        val ctrl = controller(fake)
         ctrl.startBackend(BackendKind.GSTPOP, "{}").join()
         advanceUntilIdle()
         assertEquals(UiState.Disconnected, ctrl.uiState.value)
+        assertEquals(BackendKind.GSTPOP, fake.lastStartKind)
     }
 
     @Test
-    fun stopBackend_yieldsDisconnected() = runTest {
-        val ctrl = controller(FakeRuntime(BackendStatus("running", null, null)))
+    fun stopBackend_yieldsDisconnected() = runTest(dispatcher) {
+        val fake = FakeRuntime(BackendStatus("running", null, null))
+        val ctrl = controller(fake)
         ctrl.startBackend(BackendKind.GSTPOP, "{}").join()
         ctrl.stopBackend(BackendKind.GSTPOP).join()
         advanceUntilIdle()
         assertEquals(UiState.Disconnected, ctrl.uiState.value)
+        assertEquals(BackendKind.GSTPOP, fake.stopCalledWith)
     }
 
     @Test
-    fun coordinatorCallback_yieldsCasting() = runTest {
+    fun coordinatorCallback_yieldsCasting() = runTest(dispatcher) {
         val ctrl = controller(FakeRuntime())
         ctrl.onCaptureStartedFromCoordinator(BackendKind.MIGRATION, 1280, 720)
         assertEquals(UiState.Casting(BackendKind.MIGRATION, 1280, 720), ctrl.uiState.value)

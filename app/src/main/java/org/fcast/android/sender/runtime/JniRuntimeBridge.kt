@@ -38,7 +38,7 @@ class JniRuntimeBridge(
                     MigrationRuntimeServiceBridge.queryStatus()
                 }
             }
-            parseStatus(raw)
+            StatusParser.parse(raw)
         } catch (t: Throwable) {
             Log.e(TAG, "startEmbeddedBackend($kind) failed", t)
             BackendStatus("error", t.message ?: "start failed", null)
@@ -52,7 +52,7 @@ class JniRuntimeBridge(
                     BackendKind.GSTPOP    -> { GstPopServiceBridge.stop(appContext); GstPopServiceBridge.queryStatus() }
                     BackendKind.MIGRATION -> { MigrationRuntimeServiceBridge.stop(appContext); MigrationRuntimeServiceBridge.queryStatus() }
                 }
-                parseStatus(raw)
+                StatusParser.parse(raw)
             } catch (t: Throwable) {
                 Log.e(TAG, "stopEmbeddedBackend($kind) failed", t)
                 BackendStatus("error", t.message ?: "stop failed", null)
@@ -65,7 +65,7 @@ class JniRuntimeBridge(
                 BackendKind.GSTPOP    -> GstPopServiceBridge.queryStatus()
                 BackendKind.MIGRATION -> MigrationRuntimeServiceBridge.queryStatus()
             }
-            parseStatus(raw)
+            StatusParser.parse(raw)
         }
 
     override suspend fun graphCommand(action: String, params: JSONObject): JSONObject =
@@ -76,11 +76,6 @@ class JniRuntimeBridge(
                 JSONObject().put("state", "error").put("message", raw)
             }
         }
-
-    /** Internal — exposed for unit tests via reflection or @VisibleForTesting. */
-    internal fun parseStatus(json: String?): BackendStatus {
-        return StatusParser.parse(json)
-    }
 
     companion object {
         private const val TAG = "JniRuntimeBridge"

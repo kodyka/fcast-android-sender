@@ -1,5 +1,6 @@
 package org.fcast.android.sender.shell
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -27,8 +28,9 @@ class SenderController(
     private val runtime: RuntimeBridge,
     private val coordinator: ScreenCaptureCoordinator,
     private val qr: QrScannerLauncher,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Disconnected)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
