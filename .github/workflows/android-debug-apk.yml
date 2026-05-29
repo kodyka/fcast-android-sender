@@ -40,6 +40,17 @@ jobs:
       - name: Build arm64 Rust Android library
         run: bash ci/build-rust-android-lib.sh debug
 
+      - name: Run :app:testDebugUnitTest
+        run: ./gradlew --no-daemon :app:testDebugUnitTest --no-build-cache
+
+      - name: Upload unit-test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jvm-test-reports
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 7
+
       - name: Build arm64 debug APK
         run: ./gradlew --no-daemon assembleDebug
 
