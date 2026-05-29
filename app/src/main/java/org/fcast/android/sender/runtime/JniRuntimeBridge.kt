@@ -79,16 +79,7 @@ class JniRuntimeBridge(
 
     /** Internal — exposed for unit tests via reflection or @VisibleForTesting. */
     internal fun parseStatus(json: String?): BackendStatus {
-        if (json.isNullOrEmpty()) return BackendStatus("error", "empty status", null)
-        return try {
-            val obj = JSONObject(json)
-            val state   = obj.optString("state", "unknown")
-            val message = if (obj.has("message") && !obj.isNull("message")) obj.getString("message") else null
-            val extra   = obj.optJSONObject("extra")
-            BackendStatus(state, message, extra)
-        } catch (e: Exception) {
-            BackendStatus("error", "unparseable: $json", null)
-        }
+        return StatusParser.parse(json)
     }
 
     companion object {

@@ -9,10 +9,15 @@ coroutines = "1.9.0"
 activityKtx = "1.9.2"
 lifecycleRuntimeKtx = "2.8.4"
 lifecycleViewmodelKtx = "2.8.4"
+mockito = "5.12.0"
+robolectric = "4.13"
+androidxTestCore = "1.6.1"
+androidxTestRunner = "1.6.2"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+ext-junit-ktx = { group = "androidx.test.ext", name = "junit-ktx", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
@@ -21,7 +26,11 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+androidx-test-rules = { group = "androidx.test", name = "rules", version.ref = "androidxTestCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-
