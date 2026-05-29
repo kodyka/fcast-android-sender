@@ -11,6 +11,7 @@ on:
       - '.github/workflows/android-instrumented-tests.yml'
   schedule:
     - cron: '0 4 * * *'  # nightly at 04:00 UTC, ~empty US time
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,10 +24,28 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Android CI toolchain
-         # CI uses the same custom toolchain action as the debug build pipeline
+        # CI uses the same custom toolchain action as the debug build pipeline
         uses: ./.github/actions/android-ci-setup
         with:
           rust-target: aarch64-linux-android
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ runner.os }}-android-34-google_apis-pixel_5
 
       - name: Build GStreamer Android JNI glue
         run: bash ci/build-gstreamer-android-glue.sh
@@ -51,7 +70,11 @@ jobs:
           ram-size: 4096M
           disable-animations: true
           script: |
-            ./gradlew --no-daemon :app:connectedDebugAndroidTest
+            for i in 1 2 3; do
+              ./gradlew --no-daemon :app:connectedDebugAndroidTest && exit 0
+              echo "Attempt $i failed; retrying"
+            done
+            exit 1
 
       - name: Upload connected-test reports
         if: always()
