@@ -67,12 +67,12 @@ runs:
         restore-keys: |
           android-sdk-${{ runner.os }}-cmdline-
 
-    - name: Cache Android NDK r25c
+    - name: Cache Android NDK r28c
       uses: actions/cache@v4
       id: cache-android-ndk
       with:
         path: ${{ runner.tool_cache }}/android-ndk
-        key: android-ndk-${{ runner.os }}-r25c
+        key: android-ndk-${{ runner.os }}-r28c
 
     - name: Cache GStreamer Android 1.28.0
       uses: actions/cache@v4
@@ -129,7 +129,7 @@ runs:
           --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" \
           --install "${SDK_PACKAGES[@]}"
 
-    - name: Download Android NDK r25c
+    - name: Download Android NDK r28c
       if: steps.cache-android-ndk.outputs.cache-hit != 'true'
       shell: bash
       run: |
@@ -137,9 +137,9 @@ runs:
         curl -fsSL --http1.1 \
             --retry 10 --retry-delay 5 --retry-all-errors \
             --connect-timeout 30 --max-time 900 \
-            https://dl.google.com/android/repository/android-ndk-r25c-linux.zip \
-            -o /tmp/android-ndk-r25c-linux.zip
-        unzip -q /tmp/android-ndk-r25c-linux.zip -d "${{ runner.tool_cache }}/android-ndk"
+            https://dl.google.com/android/repository/android-ndk-r28c-linux.zip \
+            -o /tmp/android-ndk-r28c-linux.zip
+        unzip -q /tmp/android-ndk-r28c-linux.zip -d "${{ runner.tool_cache }}/android-ndk"
 
     - name: Download GStreamer Android SDK
       if: steps.cache-gstreamer.outputs.cache-hit != 'true'
@@ -168,7 +168,7 @@ runs:
       run: |
         echo "ANDROID_HOME=$GITHUB_WORKSPACE/thirdparty/Android/Sdk" >> "$GITHUB_ENV"
         echo "ANDROID_SDK_ROOT=$GITHUB_WORKSPACE/thirdparty/Android/Sdk" >> "$GITHUB_ENV"
-        echo "ANDROID_NDK_ROOT=${{ runner.tool_cache }}/android-ndk/android-ndk-r25c" >> "$GITHUB_ENV"
-        echo "ANDROID_NDK_HOME=${{ runner.tool_cache }}/android-ndk/android-ndk-r25c" >> "$GITHUB_ENV"
-        echo "ANDROID_NDK=${{ runner.tool_cache }}/android-ndk/android-ndk-r25c" >> "$GITHUB_ENV"
+        echo "ANDROID_NDK_ROOT=${{ runner.tool_cache }}/android-ndk/android-ndk-r28c" >> "$GITHUB_ENV"
+        echo "ANDROID_NDK_HOME=${{ runner.tool_cache }}/android-ndk/android-ndk-r28c" >> "$GITHUB_ENV"
+        echo "ANDROID_NDK=${{ runner.tool_cache }}/android-ndk/android-ndk-r28c" >> "$GITHUB_ENV"
         echo "GSTREAMER_ROOT_ANDROID=${{ runner.tool_cache }}/gstreamer-android/gstreamer-1.0-android-universal-1.28.0" >> "$GITHUB_ENV"

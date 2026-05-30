@@ -27,15 +27,15 @@ buildSenderAndroid:
   variables:
     # Runner setup must provide ANDROID_HOME_PATH and THIRDPARTY_DEPS_PATH.
     # ANDROID_HOME_PATH should point at the Android SDK root.
-    # THIRDPARTY_DEPS_PATH should contain android-ndk-r25c/ and
+    # THIRDPARTY_DEPS_PATH should contain android-ndk-r28c/ and
     # gstreamer-1.0-android-universal-1.28.0/.
     APP_VERSION_NAME: "1"
     APP_VERSION_CODE: "1"
   script:
     - export ANDROID_HOME="$ANDROID_HOME_PATH"
     - export ANDROID_SDK_ROOT="$ANDROID_HOME_PATH"
-    - export ANDROID_NDK_ROOT="$THIRDPARTY_DEPS_PATH/android-ndk-r25c"
-    - export ANDROID_NDK_HOME="$THIRDPARTY_DEPS_PATH/android-ndk-r25c"
+    - export ANDROID_NDK_ROOT="$THIRDPARTY_DEPS_PATH/android-ndk-r28c"
+    - export ANDROID_NDK_HOME="$THIRDPARTY_DEPS_PATH/android-ndk-r28c"
     - export GSTREAMER_ROOT_ANDROID="$THIRDPARTY_DEPS_PATH/gstreamer-1.0-android-universal-1.28.0"
     - bash ci/build-gstreamer-android-glue.sh
     - bash ci/build-rust-android-lib.sh release
