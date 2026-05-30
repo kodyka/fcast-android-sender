@@ -1,61 +1,88 @@
-name: Android APK Release
+name: Android Release APK
 
 on:
-  push:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version-name:
+        description: "Version name (e.g. 1.4.0)"
+        required: true
+      version-code:
+        description: "Version code (integer)"
+        required: true
 
 permissions:
   contents: write
 
 jobs:
-  ui-validate:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run UI audit
-        run: ci/ui-validate.sh --no-build
-
-  build-android-arm64-debug:
+  build-release:
     runs-on: ubuntu-24.04
     env:
       CARGO_TERM_COLOR: always
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Android CI toolchain
         uses: ./.github/actions/android-ci-setup
         with:
-          # CI intentionally validates the arm64 Android path only.
-          # Cargo.toml still lists the other Android targets for local/release builds.
           rust-target: aarch64-linux-android
 
       - name: Build GStreamer Android JNI glue
         run: bash ci/build-gstreamer-android-glue.sh
 
-      - name: Build arm64 Rust Android library
-        run: bash ci/build-rust-android-lib.sh debug
+      - name: Build arm64 Rust Android library (release)
+        run: bash ci/build-rust-android-lib.sh release
 
-      - name: Build arm64 debug APK
-        run: ./gradlew --no-daemon assembleDebug
-
-      - name: Prepare arm64 debug APK artifact
-        id: prepare_arm64_debug_apk
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.FCAST_KEYSTORE_BASE64 }}
         run: |
-          TAG_NAME="${{ github.event.release.tag_name || github.ref_name }}"
-          SAFE_TAG_NAME="${TAG_NAME//\//-}"
-          APK_IN="app/build/outputs/apk/debug/app-debug.apk"
-          APK_OUT="app/build/outputs/apk/debug/fcast-sender-${SAFE_TAG_NAME}-arm64-v8a-debug.apk"
-          cp "$APK_IN" "$APK_OUT"
-          echo "apk_path=$APK_OUT" >> "$GITHUB_OUTPUT"
+          if [[ -z "${KEYSTORE_BASE64}" ]]; then
+            echo "::error::FCAST_KEYSTORE_BASE64 secret is missing"; exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > $RUNNER_TEMP/release.jks
+          test -s "$RUNNER_TEMP/release.jks" || { echo "::error::decoded keystore is empty"; exit 1; }
 
-      - name: Upload arm64 debug APK as workflow artifact
+      - name: Build signed release APK
+        env:
+          FCAST_KEYSTORE_PATH:     ${{ runner.temp }}/release.jks
+          FCAST_KEYSTORE_PASSWORD: ${{ secrets.FCAST_KEYSTORE_PASSWORD }}
+          FCAST_KEY_ALIAS:         ${{ secrets.FCAST_KEY_ALIAS }}
+          FCAST_KEY_PASSWORD:      ${{ secrets.FCAST_KEY_PASSWORD }}
+          FCAST_VERSION_NAME:      ${{ inputs.version-name || github.event.release.tag_name }}
+          FCAST_VERSION_CODE:      ${{ inputs.version-code || github.run_number }}
+        run: |
+          ./gradlew --no-daemon assembleRelease \
+            -PversionName=$FCAST_VERSION_NAME \
+            -PversionCode=$FCAST_VERSION_CODE
+
+      - name: Verify APK signature
+        run: |
+          APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          "$APKSIGNER" verify --verbose app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload signed APK as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk-arm64-debug
-          path: ${{ steps.prepare_arm64_debug_apk.outputs.apk_path }}
+          name: app-release-${{ inputs.version-name || github.event.release.tag_name }}
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+
+      - name: Attach signed APK to GitHub release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/app-release.apk
+
+      - name: Compute APK sha256
+        if: github.event_name == 'release'
+        run: |
+          sha256sum app/build/outputs/apk/release/app-release.apk \
+            | tee app-release.sha256
+
+      - name: Attach sha256 to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app-release.sha256

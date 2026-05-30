@@ -1,0 +1,81 @@
+name: Android Debug APK
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ui-validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run UI audit
+        run: ci/ui-validate.sh --no-build
+
+  build-android-arm64-debug:
+    runs-on: ubuntu-24.04
+    env:
+      CARGO_TERM_COLOR: always
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Android CI toolchain
+        uses: ./.github/actions/android-ci-setup
+        with:
+          # CI intentionally validates the arm64 Android path only.
+          # Cargo.toml still lists the other Android targets for local/release builds.
+          rust-target: aarch64-linux-android
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle', '**/libs.versions.toml', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Build GStreamer Android JNI glue
+        run: bash ci/build-gstreamer-android-glue.sh
+
+      - name: Build arm64 Rust Android library
+        run: bash ci/build-rust-android-lib.sh debug
+
+      - name: Run :app:testDebugUnitTest
+        run: ./gradlew --no-daemon :app:testDebugUnitTest --no-build-cache
+
+      - name: Upload unit-test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jvm-test-reports
+          path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 7
+
+      - name: Build arm64 debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Prepare arm64 debug APK artifact
+        id: prepare_arm64_debug_apk
+        run: |
+          TAG_NAME="${{ github.event.release.tag_name || github.ref_name }}"
+          SAFE_TAG_NAME="${TAG_NAME//\//-}"
+          APK_IN="app/build/outputs/apk/debug/app-debug.apk"
+          APK_OUT="app/build/outputs/apk/debug/fcast-sender-${SAFE_TAG_NAME}-arm64-v8a-debug.apk"
+          cp "$APK_IN" "$APK_OUT"
+          echo "apk_path=$APK_OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload arm64 debug APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-arm64-debug
+          path: ${{ steps.prepare_arm64_debug_apk.outputs.apk_path }}

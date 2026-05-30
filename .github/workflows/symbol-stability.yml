@@ -1,0 +1,52 @@
+name: JNI symbol stability
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'crates/**'
+      - 'app/src/**'
+      - 'ci/**'
+      - '.github/actions/**'
+      - '.github/workflows/symbol-stability.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diff-symbols:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out PR
+        uses: actions/checkout@v4
+
+      - name: Set up Android CI toolchain
+        uses: ./.github/actions/android-ci-setup
+        with:
+          rust-target: aarch64-linux-android
+
+      - name: Build GStreamer Android JNI glue
+        run: bash ci/build-gstreamer-android-glue.sh
+
+      - name: Build .so from PR
+        run: bash ci/build-rust-android-lib.sh debug
+
+      - name: Dump PR symbols
+        run: |
+          mkdir -p /tmp/symbols
+          nm -D --defined-only \
+            target/aarch64-linux-android/debug/libfcastsender.so \
+            | grep -E '^[0-9a-f]+ +T Java_org_fcast_android_sender_' \
+            | awk '{print $3}' \
+            | sort > /tmp/symbols/pr.txt
+          cat /tmp/symbols/pr.txt
+
+      - name: Diff symbols against baseline
+        run: |
+          if diff -u ci/jni-symbol-baseline.txt /tmp/symbols/pr.txt; then
+            echo "Symbols match baseline."
+          else
+            echo "::error::JNI symbol set differs from ci/jni-symbol-baseline.txt."
+            echo "::error::If this change is intentional, update ci/jni-symbol-baseline.txt and commit it with your PR."
+            exit 1
+          fi

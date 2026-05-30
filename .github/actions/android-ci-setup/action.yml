@@ -14,6 +14,10 @@ inputs:
     description: Android build-tools package to install.
     required: false
     default: build-tools;35.0.0
+  sdk-tools-version:
+    description: Android SDK command-line tools version (used as cache key).
+    required: false
+    default: "11076708"
 
 runs:
   using: composite
@@ -54,19 +58,61 @@ runs:
       shell: bash
       run: cargo install cargo-ndk --locked
 
+    - name: Cache Android SDK command-line tools
+      uses: actions/cache@v4
+      id: cache-android-sdk
+      with:
+        path: ${{ runner.tool_cache }}/android-sdk
+        key: android-sdk-${{ runner.os }}-cmdline-${{ inputs.sdk-tools-version }}
+        restore-keys: |
+          android-sdk-${{ runner.os }}-cmdline-
+
+    - name: Cache Android NDK r28c
+      uses: actions/cache@v4
+      id: cache-android-ndk
+      with:
+        path: ${{ runner.tool_cache }}/android-ndk
+        key: android-ndk-${{ runner.os }}-r28c
+
+    - name: Cache GStreamer Android 1.28.0
+      uses: actions/cache@v4
+      id: cache-gstreamer
+      with:
+        path: ${{ runner.tool_cache }}/gstreamer-android
+        key: gstreamer-android-${{ runner.os }}-1.28.0
+
+    - name: Cache cargo registry & target
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: cargo-${{ runner.os }}-${{ inputs.rust-target }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          cargo-${{ runner.os }}-${{ inputs.rust-target }}-
+
     - name: Download Android SDK
+      if: steps.cache-android-sdk.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        mkdir -p thirdparty
+        mkdir -p "${{ runner.tool_cache }}/android-sdk/cmdline-tools"
         # Force HTTP/1.1 + --retry-all-errors so transient HTTP/2 stream errors
         # ("curl: (92) ... PROTOCOL_ERROR") from the CDN are retried instead of
         # failing the whole job. --retry on its own does not cover error 92.
         curl -fsSL --http1.1 \
             --retry 10 --retry-delay 5 --retry-all-errors \
             --connect-timeout 30 --max-time 600 \
-            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-${{ inputs.sdk-tools-version }}_latest.zip \
             -o /tmp/cmdline-tools.zip
-        unzip -q /tmp/cmdline-tools.zip -d thirdparty/android-sdk-commandlinetools
+        unzip -q /tmp/cmdline-tools.zip -d "${{ runner.tool_cache }}/android-sdk/cmdline-tools"
+
+    - name: Install Android SDK packages
+      shell: bash
+      run: |
+        mkdir -p thirdparty
+        # Symlink cached SDK into workspace so sdkmanager can find it
+        ln -sfn "${{ runner.tool_cache }}/android-sdk/cmdline-tools" thirdparty/android-sdk-commandlinetools
         # Accept all SDK licenses. `yes |` triggers SIGPIPE on the writer once
         # sdkmanager closes stdin, which combined with `pipefail` makes the step
         # exit non-zero even though "All SDK package licenses accepted" was printed.
@@ -83,21 +129,23 @@ runs:
           --sdk_root="$GITHUB_WORKSPACE/thirdparty/Android/Sdk" \
           --install "${SDK_PACKAGES[@]}"
 
-    - name: Download Android NDK
+    - name: Download Android NDK r28c
+      if: steps.cache-android-ndk.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        mkdir -p thirdparty
+        mkdir -p "${{ runner.tool_cache }}/android-ndk"
         curl -fsSL --http1.1 \
             --retry 10 --retry-delay 5 --retry-all-errors \
             --connect-timeout 30 --max-time 900 \
-            https://dl.google.com/android/repository/android-ndk-r25c-linux.zip \
-            -o /tmp/android-ndk-r25c-linux.zip
-        unzip -q /tmp/android-ndk-r25c-linux.zip -d thirdparty
+            https://dl.google.com/android/repository/android-ndk-r28c-linux.zip \
+            -o /tmp/android-ndk-r28c-linux.zip
+        unzip -q /tmp/android-ndk-r28c-linux.zip -d "${{ runner.tool_cache }}/android-ndk"
 
     - name: Download GStreamer Android SDK
+      if: steps.cache-gstreamer.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        mkdir -p thirdparty/gstreamer-1.0-android-universal-1.28.0
+        mkdir -p "${{ runner.tool_cache }}/gstreamer-android/gstreamer-1.0-android-universal-1.28.0"
         # GStreamer 1.28 Android prebuilts are served from /data/pkg/.
         # The freedesktop.org CDN periodically returns
         #   curl: (92) HTTP/2 stream ... was not closed cleanly: PROTOCOL_ERROR
@@ -112,14 +160,15 @@ runs:
             --connect-timeout 30 --max-time 900 \
             https://gstreamer.freedesktop.org/data/pkg/android/1.28.0/gstreamer-1.0-android-universal-1.28.0.tar.xz \
             -o /tmp/gstreamer-android.tar.xz
-        tar -xf /tmp/gstreamer-android.tar.xz -C thirdparty/gstreamer-1.0-android-universal-1.28.0
+        tar -xf /tmp/gstreamer-android.tar.xz \
+            -C "${{ runner.tool_cache }}/gstreamer-android/gstreamer-1.0-android-universal-1.28.0"
 
     - name: Export Android toolchain paths
       shell: bash
       run: |
         echo "ANDROID_HOME=$GITHUB_WORKSPACE/thirdparty/Android/Sdk" >> "$GITHUB_ENV"
         echo "ANDROID_SDK_ROOT=$GITHUB_WORKSPACE/thirdparty/Android/Sdk" >> "$GITHUB_ENV"
-        echo "ANDROID_NDK_ROOT=$GITHUB_WORKSPACE/thirdparty/android-ndk-r25c" >> "$GITHUB_ENV"
-        echo "ANDROID_NDK_HOME=$GITHUB_WORKSPACE/thirdparty/android-ndk-r25c" >> "$GITHUB_ENV"
-        echo "ANDROID_NDK=$GITHUB_WORKSPACE/thirdparty/android-ndk-r25c" >> "$GITHUB_ENV"
-        echo "GSTREAMER_ROOT_ANDROID=$GITHUB_WORKSPACE/thirdparty/gstreamer-1.0-android-universal-1.28.0" >> "$GITHUB_ENV"
+        echo "ANDROID_NDK_ROOT=${{ runner.tool_cache }}/android-ndk/android-ndk-r28c" >> "$GITHUB_ENV"
+        echo "ANDROID_NDK_HOME=${{ runner.tool_cache }}/android-ndk/android-ndk-r28c" >> "$GITHUB_ENV"
+        echo "ANDROID_NDK=${{ runner.tool_cache }}/android-ndk/android-ndk-r28c" >> "$GITHUB_ENV"
+        echo "GSTREAMER_ROOT_ANDROID=${{ runner.tool_cache }}/gstreamer-android/gstreamer-1.0-android-universal-1.28.0" >> "$GITHUB_ENV"

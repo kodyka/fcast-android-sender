@@ -277,14 +277,22 @@ impl BackendLifecycle {
 fn build_backend(stored: &StoredBackendConfig) -> Arc<dyn MediaBackend> {
     match stored.kind {
         BackendKind::Migration => Arc::new(MigrationBackend::new()),
-        BackendKind::GstPop => Arc::new(GstPopBackend::new(
-            stored.gstpop_url.clone(),
-            stored
-                .gstpop_api_key
-                .clone()
-                .filter(|value| !value.is_empty()),
-            stored.gstpop_pipeline_id.clone(),
-        )),
+        BackendKind::GstPop => {
+            let api_key = stored
+                .gstpop_api_key_alias
+                .as_deref()
+                .filter(|alias| !alias.is_empty())
+                .and_then(|alias| {
+                    crate::app::try_app()
+                        .and_then(|a| a.secrets().get(alias).ok())
+                        .and_then(|bytes| bytes.as_str().map(|s| s.to_owned()).ok())
+                });
+            Arc::new(GstPopBackend::new(
+                stored.gstpop_url.clone(),
+                api_key,
+                stored.gstpop_pipeline_id.clone(),
+            ))
+        }
     }
 }
 
@@ -294,7 +302,17 @@ fn push_config(weak: &Weak<MainWindow>, config: &StoredBackendConfig) {
         let bridge = ui.global::<crate::Bridge>();
         bridge.set_media_backend(into_slint(config.kind));
         bridge.set_gstpop_url(config.gstpop_url.into());
-        bridge.set_gstpop_api_key(config.gstpop_api_key.unwrap_or_default().into());
+        let api_key = config
+            .gstpop_api_key_alias
+            .as_deref()
+            .filter(|alias| !alias.is_empty())
+            .and_then(|alias| {
+                crate::app::try_app()
+                    .and_then(|a| a.secrets().get(alias).ok())
+                    .and_then(|bytes| bytes.as_str().map(|s| s.to_owned()).ok())
+            })
+            .unwrap_or_default();
+        bridge.set_gstpop_api_key(api_key.into());
         bridge.set_gstpop_pipeline_id(config.gstpop_pipeline_id.into());
         bridge.set_media_backend_state(crate::MediaBackendState::Disconnected);
         bridge.set_media_backend_status_text("".into());
@@ -308,11 +326,23 @@ fn read_config_from_bridge(weak: &Weak<MainWindow>) -> StoredBackendConfig {
     };
     let bridge = ui.global::<crate::Bridge>();
     let api_key = bridge.get_gstpop_api_key().to_string();
+
+    let alias = if !api_key.is_empty() {
+        let name = "gstpop.api_key.v1";
+        if let Some(app) = crate::app::try_app() {
+            let _ = app.secrets().put(name, api_key.as_bytes());
+        }
+        Some(name.to_owned())
+    } else {
+        None
+    };
+
     StoredBackendConfig {
         kind: from_slint(bridge.get_media_backend()),
         gstpop_url: bridge.get_gstpop_url().to_string(),
-        gstpop_api_key: (!api_key.is_empty()).then_some(api_key),
+        gstpop_api_key_alias: alias,
         gstpop_pipeline_id: bridge.get_gstpop_pipeline_id().to_string(),
+        gstpop_api_key: None,
     }
 }
 
@@ -379,6 +409,7 @@ mod tests {
 
     #[test]
     fn test_switch_media_backend_to_gstpop_integration() {
+        crate::app::init(crate::app::App::production());
         use std::sync::Mutex as StdMutex;
         use tokio::net::TcpListener;
         use tokio_tungstenite::accept_hdr_async;

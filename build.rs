@@ -63,10 +63,10 @@ fn main() {
         format!("{gstreamer_root}/{gst_target_abi}/lib"),
         format!("{gstreamer_root}/{gst_target_abi}/lib/gstreamer-1.0"),
         format!("{}/app/libs/{android_target_abi}", proj_root.display()),
-        // format!("{android_ndk_home}/toolchains/llvm/prebuilt/{host_tag}/lib/clang/18/lib/linux/"), // r27d
-        format!(
-            "{android_ndk_home}/toolchains/llvm/prebuilt/{host_tag}/lib64/clang/14.0.7/lib/linux/"
-        ), // r25c
+        // r25c: lib64/clang/14.0.7/lib/linux/
+        // r27+/r28c: lib/clang/18/lib/linux/ — but clang_rt.builtins is no longer
+        //   in this directory in NDK r28c (LLVM 18 reorganised the runtime libs).
+        //   cargo-ndk links builtins automatically; no explicit search path needed.
     ];
 
     for search_path in search_paths {
@@ -89,7 +89,9 @@ fn main() {
         // "gstwebrtc-1.0",
         // "gstpbutils-1.0",
         "orc-0.4",
-        &format!("clang_rt.builtins-{clang_target_abi}-android"),
+        // clang_rt.builtins: was needed for NDK r25c; cargo-ndk + NDK r28c provides
+        // it automatically via the clang driver. Explicit link breaks r28c+ builds.
+        // &format!("clang_rt.builtins-{clang_target_abi}-android"),
     ];
 
     for lib in libs {

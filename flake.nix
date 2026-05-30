@@ -43,15 +43,14 @@
             rustc = rustToolchain;
           };
 
-          # ── Android SDK + NDK (r25c = 25.2.9519653) ────────────────
-          # NDK r25c matches CI and build.rs clang/14.0.7 path.
-          ndkVersion = "25.2.9519653";
+          # ── Android SDK + NDK (r28c = 28.0.13004108) ────────────────
+          ndkVersion = "28.0.13004108";
           androidComposition = pkgs.androidenv.composeAndroidPackages {
             # 34.0.0 matches AGP 8.7's auto-resolved build-tools for compileSdk 34
             # (CI silently auto-installs it; the Nix SDK is read-only so we pin it here).
             # 35.0.0 mirrors what ci/.github/actions/android-ci-setup installs.
-            buildToolsVersions = [ "34.0.0" "35.0.0" ];
-            platformVersions = [ "34" "35" ];
+            buildToolsVersions = [ "34.0.0" "35.0.0" "36.0.0" ];
+            platformVersions = [ "34" "35" "36" ];
             ndkVersions = [ ndkVersion ];
             includeNDK = true;
             includeSources = false;
