@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'org.fcast.android.sender'
-    compileSdk 34
+    compileSdk 35
 
     sourceSets {
         main {
