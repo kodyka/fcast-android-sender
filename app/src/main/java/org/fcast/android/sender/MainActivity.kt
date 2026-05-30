@@ -23,6 +23,7 @@ import org.fcast.android.sender.shell.UiState
 import org.freedesktop.gstreamer.GStreamer
 import java.nio.ByteBuffer
 
+@Suppress("GestureBackNavigation", "DEPRECATION")
 class MainActivity : NativeActivity(), DisplayManager.DisplayListener {
 
     private lateinit var displayManager: DisplayManager

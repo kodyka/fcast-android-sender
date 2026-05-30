@@ -120,6 +120,10 @@ class RealScreenCaptureCoordinator(
         pendingConfig = null
 
         val mp = projectionManager.getMediaProjection(resultCode, data)
+        if (mp == null) {
+            callbacks.onCaptureCancelled("internal: failed to obtain MediaProjection")
+            return
+        }
         projection = mp
 
         val cb = object : MediaProjection.Callback() {

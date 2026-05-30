@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace 'org.fcast.android.sender'
-    compileSdk 35
+    compileSdk 36
     ndkVersion '25.2.9519653'
 
     sourceSets {
@@ -29,7 +29,7 @@ android {
     defaultConfig {
         applicationId "org.fcast.android.sender"
         minSdk 26
-        targetSdk 34
+        targetSdk 36
         versionCode  (project.findProperty('versionCode')?.toInteger()  ?: 1)
         versionName  (project.findProperty('versionName')?.toString()   ?: '1.0')
         ndk {
