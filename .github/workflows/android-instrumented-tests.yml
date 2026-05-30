@@ -69,12 +69,7 @@ jobs:
           profile: pixel_5
           ram-size: 4096M
           disable-animations: true
-          script: |
-            for i in 1 2 3; do
-              ./gradlew --no-daemon :app:connectedDebugAndroidTest && exit 0
-              echo "Attempt $i failed; retrying"
-            done
-            exit 1
+          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest || ./gradlew --no-daemon :app:connectedDebugAndroidTest || ./gradlew --no-daemon :app:connectedDebugAndroidTest
 
       - name: Upload connected-test reports
         if: always()
