@@ -63,10 +63,9 @@ fn main() {
         format!("{gstreamer_root}/{gst_target_abi}/lib"),
         format!("{gstreamer_root}/{gst_target_abi}/lib/gstreamer-1.0"),
         format!("{}/app/libs/{android_target_abi}", proj_root.display()),
-        // format!("{android_ndk_home}/toolchains/llvm/prebuilt/{host_tag}/lib/clang/18/lib/linux/"), // r27d
-        format!(
-            "{android_ndk_home}/toolchains/llvm/prebuilt/{host_tag}/lib64/clang/14.0.7/lib/linux/"
-        ), // r25c
+        // NDK r28c (and r27) ship clang 18; path structure changed from lib64 to lib.
+        format!("{android_ndk_home}/toolchains/llvm/prebuilt/{host_tag}/lib/clang/18/lib/linux/"),
+        // format!("{android_ndk_home}/toolchains/llvm/prebuilt/{host_tag}/lib64/clang/14.0.7/lib/linux/"), // r25c
     ];
 
     for search_path in search_paths {
